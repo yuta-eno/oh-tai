@@ -17,17 +17,10 @@
         }
         h1 { margin: 0; font-size: 1.1rem; }
 
-        /* ヘッダー右上のボタン群 */
         .header-actions { display: flex; gap: 10px; }
         .header-btn {
-            background: rgba(255,255,255,0.2); 
-            color: white; 
-            border: 1px solid rgba(255,255,255,0.5); 
-            padding: 4px 10px; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 0.8rem; 
-            transition: 0.2s;
+            background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); 
+            padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
         }
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
@@ -39,26 +32,33 @@
         .waiting-section { flex: 1; min-width: 300px; background: #e6e6e6; padding: 15px; border-radius: 8px; max-height: 85vh; overflow-y: auto; position: sticky; top: 60px; }
         h2 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid #999; padding-bottom: 5px; margin-bottom: 15px; color: #555; }
         
-        /* カードデザイン */
+        /* カード */
         .card { background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 12px; display: flex; flex-direction: column; gap: 6px; border-top: 5px solid #bbb; transition: 0.2s; }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
         .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
         
-        /* 入力フォーム */
+        /* フォーム */
         .input-group { display: flex; flex-direction: column; gap: 2px; }
         .input-group label { font-size: 0.75rem; font-weight: bold; color: #666; }
         input, select, textarea { padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
         textarea.c-memo, textarea.v-memo { resize: vertical; height: 2.5em; font-size: 0.85rem; }
         .timer-display { font-size: 1.6rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 5px 0; }
         
-        /* ボタン */
+        /* ボタン類 */
         .btn-row { display: flex; gap: 5px; margin-top: 5px; }
         button { flex: 1; padding: 6px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85rem; transition: opacity 0.2s; }
         button:hover { opacity: 0.8; }
         .btn-start { background: #1890ff; }
         .btn-end { background: #52c41a; display: none; }
         .btn-extend { background: #faad14; display: none; }
+
+        /* 名前クリアボタン */
+        .btn-clear-name {
+            width: 34px; flex: none; background: #999; color: white; border: none; border-radius: 4px; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .btn-clear-name:hover { background: #777; }
         
         /* 来店者リスト */
         .visitor-form { background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #ccc; }
@@ -74,7 +74,6 @@
         .log-table th { background-color: #eee; }
         .log-table tr:nth-child(even) { background-color: #fcfcfc; }
         
-        /* 初期設定ボタン（最初だけ表示） */
         #setup-btn { background: #333; color: #fff; padding: 10px; margin: 10px; cursor: pointer; display: none; }
     </style>
 </head>
@@ -122,37 +121,30 @@
     </div>
 
 <script type="module">
-    // --- 1. Firebaseの設定 ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    // getDocs を追加しました
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
     // 例: const firebaseConfig = { apiKey: "...", ... };
     
-    const firebaseConfig = {
-      apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-      authDomain: "oh-tai.firebaseapp.com",
-      projectId: "oh-tai",
-      storageBucket: "oh-tai.firebasestorage.app",
-      messagingSenderId: "1070284840120",
-      appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-    };
+   const firebaseConfig = {
+  apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+  authDomain: "oh-tai.firebaseapp.com",
+  projectId: "oh-tai",
+  storageBucket: "oh-tai.firebasestorage.app",
+  messagingSenderId: "1070284840120",
+  appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+};
     
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-    // 初期化
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-
     const TOTAL_COUNTERS = 12;
-    let localLogs = []; // CSV出力用
+    let localLogs = [];
 
-    // --- HTML生成 ---
     window.onload = function() {
         createCards();
-        // Setupボタンの表示判定（データが無い場合のみ表示させたいが、簡易的に隠しておく）
-        // 開発者用として残す
     };
 
     function createCards() {
@@ -160,9 +152,16 @@
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const div = document.createElement('div');
             div.className = 'card counter-card';
-            div.id = `counter-card-${i}`; // IDを修正
+            div.id = `counter-card-${i}`;
+            // 変更点：名前欄の横にクリアボタンを追加
             div.innerHTML = `
-                <div class="input-group"><label>担当者名</label><input type="text" id="c-name-${i}" class="c-name"></div>
+                <div class="input-group">
+                    <label>担当者名</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="c-name-${i}" class="c-name" style="flex:1">
+                        <button id="btn-clear-name-${i}" class="btn-clear-name" title="名前をクリア">↻</button>
+                    </div>
+                </div>
                 <div class="input-group"><label>テーブル番号</label><input type="text" id="c-table-${i}" class="c-table"></div>
                 <div class="input-group"><label>応対内容</label><select id="c-content-${i}" class="c-content"><option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option></select></div>
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
@@ -175,31 +174,25 @@
             `;
             grid.appendChild(div);
 
-            // イベントリスナー登録 (moduleなのでHTML内のonclickは使えないため)
             document.getElementById(`btn-start-${i}`).addEventListener('click', () => startService(i));
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
-            // 備考のリアルタイム保存（フォーカスが外れたら保存）
+            document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i)); // 名前クリア
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
         }
     }
 
-    // --- 2. リアルタイム同期 (Listeners) ---
-
-    // カウンター監視
+    // --- リアルタイム監視 ---
     onSnapshot(collection(db, "counters"), (snapshot) => {
         snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const id = docSnap.id; // "1" ~ "12"
-            updateCardUI(id, data);
+            updateCardUI(docSnap.id, docSnap.data());
         });
     });
 
-    // 来店者リスト監視 (古い順)
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
     onSnapshot(qVisitors, (snapshot) => {
         const listDiv = document.getElementById('waiting-list');
-        listDiv.innerHTML = ""; // クリア
+        listDiv.innerHTML = "";
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
             const div = document.createElement('div');
@@ -212,29 +205,26 @@
                 <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
             `;
             listDiv.appendChild(div);
-
-            // イベント設定
             document.getElementById(`del-v-${docSnap.id}`).addEventListener('click', () => deleteDoc(doc(db, "visitors", docSnap.id)));
             document.getElementById(`memo-v-${docSnap.id}`).addEventListener('change', (e) => updateDoc(doc(db, "visitors", docSnap.id), { memo: e.target.value }));
         });
     });
 
-    // ログ監視 (新しい順20件)
     const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"), limit(20));
     onSnapshot(qLogs, (snapshot) => {
         const tbody = document.getElementById('log-table-body');
         tbody.innerHTML = "";
-        localLogs = []; // CSV用にリセット
+        localLogs = [];
         snapshot.forEach((docSnap) => {
             const l = docSnap.data();
-            localLogs.push(l); // データ保持
+            localLogs.push(l);
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
     });
 
-    // --- 3. UI反映ロジック ---
+    // --- UI更新 ---
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
         const els = {
@@ -245,49 +235,52 @@
             start: document.getElementById(`btn-start-${id}`),
             extend: document.getElementById(`btn-extend-${id}`),
             end: document.getElementById(`btn-end-${id}`),
-            timer: document.getElementById(`timer-${id}`)
+            timer: document.getElementById(`timer-${id}`),
+            clearName: document.getElementById(`btn-clear-name-${id}`)
         };
 
-        // 自分が編集中でなければ値を更新
         if(document.activeElement !== els.name) els.name.value = data.name || "";
         if(document.activeElement !== els.table) els.table.value = data.table || "";
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
-        // ステータススタイル
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // ロック
-            els.name.disabled = true; els.table.disabled = true; els.content.disabled = true;
+            // ロック（名前クリアボタンもロック）
+            els.name.disabled = true; 
+            els.clearName.disabled = true; // ボタン無効化
+            els.table.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
-
-            // タイマー計算用属性セット
             card.dataset.startTime = data.startTime || "";
         } else {
-            // 待機中
-            els.name.disabled = false; els.table.disabled = false; els.content.disabled = false;
+            // 待機中（ロック解除）
+            els.name.disabled = false; 
+            els.clearName.disabled = false; // ボタン有効化
+            els.table.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
             card.dataset.startTime = "";
         }
     }
 
-    // --- 4. アクション (DB書き込み) ---
+    // --- DB操作アクション ---
     window.startService = async (id) => {
         const name = document.getElementById(`c-name-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
         const table = document.getElementById(`c-table-${id}`).value;
         const memo = document.getElementById(`c-memo-${id}`).value;
         if(!name || !content) { alert("名前と内容を入れてください"); return; }
-
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "active",
-            name: name, table: table, content: content, memo: memo,
-            startTime: new Date().toISOString()
+            status: "active", name, table, content, memo, startTime: new Date().toISOString()
         });
+    };
+    
+    // 名前のみクリアする関数
+    window.clearName = async (id) => {
+        await updateDoc(doc(db, "counters", String(id)), { name: "" });
     };
 
     window.toggleExtend = async (id) => {
@@ -295,15 +288,11 @@
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
-
     window.updateMemo = async (id, text) => {
         await updateDoc(doc(db, "counters", String(id)), { memo: text });
     };
-
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
-        
-        // 現在のデータを取得してログへ
         const card = document.getElementById(`counter-card-${id}`);
         const name = document.getElementById(`c-name-${id}`).value;
         const table = document.getElementById(`c-table-${id}`).value;
@@ -312,19 +301,17 @@
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
 
-        // ログ保存
         await addDoc(collection(db, "logs"), {
-            createdAt: serverTimestamp(),
-            endTime: new Date().toLocaleTimeString(),
+            createdAt: serverTimestamp(), endTime: new Date().toLocaleTimeString(),
             name, table, content, memo, duration, isExtended
         });
-
-        // カウンターリセット
+        
+        // 変更点：name は空にせず、残す
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "", name: "", table: "", content: "", memo: "", startTime: ""
+            status: "", table: "", content: "", memo: "", startTime: ""
         });
     };
-
+    
     // 来店者追加
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value;
@@ -332,20 +319,43 @@
         const content = document.getElementById('v-content').value;
         const memo = document.getElementById('v-memo').value;
         if(!name) return;
-
         await addDoc(collection(db, "visitors"), {
             createdAt: serverTimestamp(),
             timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
             name, table, content, memo
         });
-
-        // フォームクリア
         document.getElementById('v-name').value = '';
         document.getElementById('v-table').value = '';
         document.getElementById('v-memo').value = '';
     };
 
-    // --- 5. タイマー処理 (ローカルで毎秒実行) ---
+    // --- CSV出力 ---
+    window.exportLogsToCSV = () => {
+        if (localLogs.length === 0) { alert("データがありません"); return; }
+        let csv = "\uFEFF終了時刻,担当者,No,用件,備考,所要時間,延長\n";
+        localLogs.forEach(l => {
+            csv += `${l.endTime},"${l.name}","${l.table}",${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- ログ削除 ---
+    window.clearAllLogs = async () => {
+        if(!confirm("【警告】\nログデータを全て削除します。\n（テスト運用中のみ使用してください）\n\n本当によろしいですか？")) return;
+        const q = query(collection(db, "logs"));
+        const snapshot = await getDocs(q);
+        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(promises);
+        alert("ログを削除しました");
+    }
+
+    // --- タイマー ---
     setInterval(() => {
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const card = document.getElementById(`counter-card-${i}`);
@@ -366,38 +376,7 @@
         return `${h}:${m}:${s}`;
     }
 
-    // --- 6. CSV出力 ---
-    window.exportLogsToCSV = () => {
-        if (localLogs.length === 0) { alert("データがありません"); return; }
-        let csv = "\uFEFF終了時刻,担当者,No,用件,備考,所要時間,延長\n";
-        localLogs.forEach(l => {
-            csv += `${l.endTime},"${l.name}","${l.table}",${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // --- 7. ログ削除 (DBのlogsコレクションを全消去) ---
-    window.clearAllLogs = async () => {
-        if(!confirm("【警告】\nログデータを全て削除します。\n（テスト運用中のみ使用してください）\n\n本当によろしいですか？")) return;
-        
-        // logsコレクションの全ドキュメントを取得して削除
-        const q = query(collection(db, "logs"));
-        const snapshot = await getDocs(q);
-        
-        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(promises);
-        
-        alert("ログを削除しました");
-    }
-
-    // --- 8. 初回セットアップ用関数 ---
-    // Firestoreは最初にドキュメントを作らないといけないため
+    // --- 初回セットアップ ---
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します。よろしいですか？(最初の1回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){
@@ -408,7 +387,7 @@
         alert("セットアップ完了！ページをリロードしてください。");
     }
     
-    // データが空ならセットアップボタンを表示
+    // Setupボタン表示判定
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     getDoc(doc(db, "counters", "1")).then(docSnap => {
         if(!docSnap.exists()) {
