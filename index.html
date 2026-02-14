@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v18</title>
+    <title>スーパー管理ボード v19</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -123,7 +123,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v18</h1>
+            <h1>スーパー管理ボード v19</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -160,7 +160,8 @@
         <table class="log-table">
             <thead>
                 <tr>
-                    <th width="60">開始時刻</th> <th width="60">終了時刻</th>
+                    <th width="60">開始時刻</th>
+                    <th width="60">終了時刻</th>
                     <th width="80">担当者</th>
                     <th width="30">No.</th>
                     <th width="60">予定</th>
@@ -242,6 +243,7 @@
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
             document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
+            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target.value));
         }
     }
 
@@ -283,7 +285,6 @@
             localLogs.push(l);
             const tr = document.createElement('tr');
             
-            // 開始時刻の表示形式を調整
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
 
             tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
@@ -313,15 +314,18 @@
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
+        // ★終了予定時間のロック制御★
+        // 値がDBに保存されていればロック（入力済みは修正不可）
+        els.schedule.disabled = !!data.scheduledEndTime;
+
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // 稼働中はロック
+            // 稼働中はロック (終了予定は上記ロジックで制御するためここでは触らない)
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
-            els.schedule.disabled = true; 
             
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
@@ -329,7 +333,7 @@
             // 待機中
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
-            els.schedule.disabled = false;
+            // els.schedule.disabled = false; // 上記ロジックで制御
             
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
@@ -371,6 +375,14 @@
         }
     };
 
+    // 終了予定時間の更新（稼働中のみ）
+    window.updateSchedule = async (id, timeStr) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: timeStr });
+        }
+    };
+
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
@@ -381,7 +393,7 @@
         const memo = document.getElementById(`c-memo-${id}`).value;
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
-        const startTimeISO = card.dataset.startTime; // 開始時刻を取得
+        const startTimeISO = card.dataset.startTime;
 
         await addDoc(collection(db, "logs"), {
             createdAt: serverTimestamp(), 
@@ -414,7 +426,6 @@
 
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        // CSVヘッダーに「開始時刻」追加
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
