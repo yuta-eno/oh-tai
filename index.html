@@ -2,8 +2,12 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スーパー管理ボード (Firebase版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>スーパー管理ボード v13</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -11,43 +15,82 @@
         /* ヘッダー */
         header { 
             background: var(--primary-color); color: white; 
-            padding: 8px 15px; 
+            padding: 5px 15px; 
             display: flex; justify-content: space-between; align-items: center; 
             position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
-        h1 { margin: 0; font-size: 1.1rem; }
+        h1 { margin: 0; font-size: 1rem; }
 
         .header-actions { display: flex; gap: 10px; }
         .header-btn {
             background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); 
-            padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: 0.2s;
         }
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
-        /* レイアウト */
-        .main-dashboard { display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; align-items: flex-start; }
-        .counters-section { flex: 3; min-width: 600px; }
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
-        .waiting-section { flex: 1; min-width: 300px; background: #e6e6e6; padding: 15px; border-radius: 8px; max-height: 85vh; overflow-y: auto; position: sticky; top: 60px; }
-        h2 { font-size: 1rem; margin-top: 0; border-bottom: 2px solid #999; padding-bottom: 5px; margin-bottom: 15px; color: #555; }
+        /* レイアウト調整 (6列x2段) */
+        .main-dashboard { display: flex; flex-wrap: nowrap; gap: 10px; padding: 10px; align-items: flex-start; }
         
-        /* カード */
-        .card { background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 12px; display: flex; flex-direction: column; gap: 6px; border-top: 5px solid #bbb; transition: 0.2s; }
+        .counters-section { 
+            flex: 5; /* カウンターエリアを広めに */
+            min-width: 0; /* フレックスボックスでの縮小を許可 */
+        }
+        
+        .grid-container { 
+            display: grid; 
+            /* PC画面で強制的に6列にする */
+            grid-template-columns: repeat(6, 1fr); 
+            gap: 8px; 
+        }
+
+        /* 画面が狭い場合（タブレット縦など）は列数を減らす */
+        @media (max-width: 1200px) {
+            .grid-container { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 800px) {
+            .main-dashboard { flex-wrap: wrap; }
+            .grid-container { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .waiting-section { 
+            flex: 1; 
+            min-width: 250px; 
+            background: #e6e6e6; 
+            padding: 10px; 
+            border-radius: 6px; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            position: sticky; top: 50px; 
+        }
+
+        h2 { font-size: 0.9rem; margin-top: 0; border-bottom: 2px solid #999; padding-bottom: 5px; margin-bottom: 10px; color: #555; }
+        
+        /* カード (コンパクト化) */
+        .card { 
+            background: var(--card-bg); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            padding: 8px; /* パディング縮小 */
+            display: flex; flex-direction: column; gap: 4px; 
+            border-top: 4px solid #bbb; transition: 0.2s; 
+        }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
         .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 5px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
         
-        /* フォーム */
-        .input-group { display: flex; flex-direction: column; gap: 2px; }
-        .input-group label { font-size: 0.75rem; font-weight: bold; color: #666; }
-        input, select, textarea { padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
-        textarea.c-memo, textarea.v-memo { resize: vertical; height: 2.5em; font-size: 0.85rem; }
-        .timer-display { font-size: 1.6rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 5px 0; }
+        /* フォーム要素 (コンパクト化) */
+        .input-group { display: flex; flex-direction: column; gap: 1px; }
+        .input-group label { font-size: 0.65rem; font-weight: bold; color: #666; }
+        input, select, textarea { padding: 3px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.8rem; }
+        
+        /* 備考欄 */
+        textarea.c-memo { resize: none; height: 3em; font-size: 0.75rem; line-height: 1.2; }
+        textarea.v-memo { resize: vertical; height: 2.5em; font-size: 0.8rem; }
+        
+        .timer-display { font-size: 1.2rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 2px 0; }
         
         /* ボタン類 */
-        .btn-row { display: flex; gap: 5px; margin-top: 5px; }
-        button { flex: 1; padding: 6px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85rem; transition: opacity 0.2s; }
+        .btn-row { display: flex; gap: 3px; margin-top: 3px; }
+        button { flex: 1; padding: 4px; border: none; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 0.75rem; transition: opacity 0.2s; }
         button:hover { opacity: 0.8; }
         .btn-start { background: #1890ff; }
         .btn-end { background: #52c41a; display: none; }
@@ -55,23 +98,25 @@
 
         /* 名前クリアボタン */
         .btn-clear-name {
-            width: 34px; flex: none; background: #999; color: white; border: none; border-radius: 4px; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+            width: 30px; height: 26px; flex: none; 
+            background: #999; color: white; border: none; border-radius: 3px; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem;
+            margin-left: 2px;
         }
         .btn-clear-name:hover { background: #777; }
         
         /* 来店者リスト */
-        .visitor-form { background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #ccc; }
-        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 8px; }
-        .visitor-card { background: white; padding: 8px; border-left: 4px solid var(--primary-color); border-radius: 4px; font-size: 0.9rem; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 8px; }
-        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 2.5em; margin-top: 5px; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 3px; padding: 4px; background: #fdfdfd; font-family: inherit; }
-        .btn-delete-visitor { position: absolute; top: 5px; right: 5px; background: #e0e0e0; color: #333; width: 20px; height: 20px; padding: 0; font-size: 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .visitor-form { background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ccc; }
+        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 5px; }
+        .visitor-card { background: white; padding: 6px; border-left: 3px solid var(--primary-color); border-radius: 4px; font-size: 0.8rem; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 6px; }
+        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 2.5em; margin-top: 3px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 3px; padding: 3px; background: #fdfdfd; font-family: inherit; }
+        .btn-delete-visitor { position: absolute; top: 4px; right: 4px; background: #e0e0e0; color: #333; width: 16px; height: 16px; padding: 0; font-size: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         
         /* ログ */
-        .log-section { border-top: 3px solid #ddd; background: #fafafa; padding: 20px; margin-top: 20px; }
-        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .log-table th, .log-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .log-table th { background-color: #eee; }
+        .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
+        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .log-table th, .log-table td { border: 1px solid #ddd; padding: 5px; text-align: left; }
+        .log-table th { background-color: #eee; white-space: nowrap; }
         .log-table tr:nth-child(even) { background-color: #fcfcfc; }
         
         #setup-btn { background: #333; color: #fff; padding: 10px; margin: 10px; cursor: pointer; display: none; }
@@ -80,7 +125,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード (Firebase)</h1>
+            <h1>スーパー管理ボード v13</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回セットアップ（1回だけ押す）</button>
         </div>
         
@@ -113,9 +158,9 @@
     </div>
     
     <div class="log-section">
-        <h2>本日完了分ログ (最新20件)</h2>
+        <h2>本日完了分ログ (全件)</h2>
         <table class="log-table">
-            <thead><tr><th width="80">終了時刻</th><th width="120">担当者</th><th width="70">No.</th><th width="120">用件</th><th>備考</th><th width="90">所要時間</th><th width="60">延長</th></tr></thead>
+            <thead><tr><th width="70">終了時刻</th><th width="100">担当者</th><th width="50">No.</th><th width="100">用件</th><th>備考</th><th width="70">所要時間</th><th width="50">延長</th></tr></thead>
             <tbody id="log-table-body"></tbody>
         </table>
     </div>
@@ -125,9 +170,8 @@
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
-    // 例: const firebaseConfig = { apiKey: "...", ... };
     
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
   authDomain: "oh-tai.firebaseapp.com",
   projectId: "oh-tai",
@@ -153,12 +197,11 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
-            // 変更点：名前欄の横にクリアボタンを追加
             div.innerHTML = `
                 <div class="input-group">
                     <label>担当者名</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="c-name-${i}" class="c-name" style="flex:1">
+                    <div style="display:flex; gap:3px;">
+                        <input type="text" id="c-name-${i}" class="c-name" style="flex:1; min-width:0;">
                         <button id="btn-clear-name-${i}" class="btn-clear-name" title="名前をクリア">↻</button>
                     </div>
                 </div>
@@ -177,7 +220,7 @@
             document.getElementById(`btn-start-${i}`).addEventListener('click', () => startService(i));
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
-            document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i)); // 名前クリア
+            document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
         }
     }
@@ -201,7 +244,7 @@
                 <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
                 <div class="visitor-time">来店: ${v.timeStr}</div>
                 <div style="font-weight:bold;">${v.name} 様</div>
-                <div style="font-size:0.8rem; color:#666;">Table: ${v.table} / ${v.content}</div>
+                <div style="font-size:0.75rem; color:#666;">Table: ${v.table} / ${v.content}</div>
                 <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
             `;
             listDiv.appendChild(div);
@@ -210,7 +253,8 @@
         });
     });
 
-    const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"), limit(20));
+    // ログ監視: limit(20)を削除し、全件取得に変更
+    const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"));
     onSnapshot(qLogs, (snapshot) => {
         const tbody = document.getElementById('log-table-body');
         tbody.innerHTML = "";
@@ -249,16 +293,16 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // ロック（名前クリアボタンもロック）
+            // ロック（名前クリアボタンも）
             els.name.disabled = true; 
-            els.clearName.disabled = true; // ボタン無効化
+            els.clearName.disabled = true; 
             els.table.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            // 待機中（ロック解除）
+            // 待機中
             els.name.disabled = false; 
-            els.clearName.disabled = false; // ボタン有効化
+            els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
@@ -278,7 +322,6 @@
         });
     };
     
-    // 名前のみクリアする関数
     window.clearName = async (id) => {
         await updateDoc(doc(db, "counters", String(id)), { name: "" });
     };
@@ -288,9 +331,16 @@
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
+    
+    // 【修正】待機中（ステータスが空）のときはDB更新しない（入力消失防止）
     window.updateMemo = async (id, text) => {
-        await updateDoc(doc(db, "counters", String(id)), { memo: text });
+        const card = document.getElementById(`counter-card-${id}`);
+        // 稼働中(status-active)のみ、リアルタイム同期する
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { memo: text });
+        }
     };
+
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
@@ -306,13 +356,12 @@
             name, table, content, memo, duration, isExtended
         });
         
-        // 変更点：name は空にせず、残す
+        // 名前(name)以外をクリアする
         await updateDoc(doc(db, "counters", String(id)), {
             status: "", table: "", content: "", memo: "", startTime: ""
         });
     };
     
-    // 来店者追加
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value;
         const table = document.getElementById('v-table').value;
@@ -329,7 +378,6 @@
         document.getElementById('v-memo').value = '';
     };
 
-    // --- CSV出力 ---
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
         let csv = "\uFEFF終了時刻,担当者,No,用件,備考,所要時間,延長\n";
@@ -345,9 +393,8 @@
         document.body.removeChild(link);
     }
 
-    // --- ログ削除 ---
     window.clearAllLogs = async () => {
-        if(!confirm("【警告】\nログデータを全て削除します。\n（テスト運用中のみ使用してください）\n\n本当によろしいですか？")) return;
+        if(!confirm("【警告】\nログデータを全て削除します。\n\n本当によろしいですか？")) return;
         const q = query(collection(db, "logs"));
         const snapshot = await getDocs(q);
         const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
@@ -355,7 +402,6 @@
         alert("ログを削除しました");
     }
 
-    // --- タイマー ---
     setInterval(() => {
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const card = document.getElementById(`counter-card-${i}`);
@@ -376,7 +422,6 @@
         return `${h}:${m}:${s}`;
     }
 
-    // --- 初回セットアップ ---
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します。よろしいですか？(最初の1回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){
@@ -387,7 +432,6 @@
         alert("セットアップ完了！ページをリロードしてください。");
     }
     
-    // Setupボタン表示判定
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     getDoc(doc(db, "counters", "1")).then(docSnap => {
         if(!docSnap.exists()) {
