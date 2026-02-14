@@ -7,15 +7,14 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード</title>
+    <title>スーパー管理ボード v16</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* ヘッダー (スクロールで消えるように static に変更) */
         header { 
             background: var(--primary-color); color: white; 
-            padding: 4px 15px; /* 高さを抑える */
+            padding: 4px 15px; 
             display: flex; justify-content: space-between; align-items: center; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
@@ -29,28 +28,18 @@
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
-        /* --- レイアウト調整 (15枠を一画面に収める) --- */
         .main-dashboard { 
-            display: flex; 
-            flex-wrap: nowrap; /* 基本は横並び維持 */
-            gap: 8px;          /* 隙間を狭く */
-            padding: 8px; 
-            align-items: flex-start; 
+            display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
         }
         
-        /* 左：カウンターエリア */
-        .counters-section { 
-            flex: 1 1 auto;   /* 可変幅 */
-            width: 78%;       /* 画面の約8割 */
-        }
+        .counters-section { flex: 1 1 auto; width: 78%; }
         
         .grid-container { 
             display: grid; 
-            grid-template-columns: repeat(5, 1fr); /* 横5列 */
-            gap: 6px; /* カード間の隙間を極小に */
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 6px; 
         }
 
-        /* レスポンシブ: 画面が狭すぎるときだけ列を減らす */
         @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 900px) { 
             .main-dashboard { flex-wrap: wrap; } 
@@ -58,49 +47,34 @@
             .grid-container { grid-template-columns: repeat(3, 1fr); } 
         }
 
-        /* 右：来店者リストエリア */
         .waiting-section { 
-            flex: 0 0 22%;    /* 画面の約2割固定 */
-            min-width: 240px; 
-            background: #e6e6e6; 
-            padding: 8px; 
-            border-radius: 4px; 
-            /* ヘッダーが消えるので画面上端に吸着させる */
-            position: sticky; 
-            top: 5px; 
-            max-height: 98vh; 
-            overflow-y: auto; 
+            flex: 0 0 22%; min-width: 240px; 
+            background: #e6e6e6; padding: 8px; border-radius: 4px; 
+            position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; 
         }
 
         h2 { font-size: 0.8rem; margin: 0 0 5px 0; border-bottom: 2px solid #999; padding-bottom: 2px; color: #555; }
         
-        /* --- カード (超コンパクト化) --- */
         .card { 
             background: var(--card-bg); border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-            padding: 5px; 
-            display: flex; flex-direction: column; gap: 2px; 
+            padding: 5px; display: flex; flex-direction: column; gap: 2px; 
             border-top: 3px solid #bbb; transition: 0.2s; 
         }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
         .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
         
-        /* フォーム要素 (文字サイズ縮小) */
         .input-group { display: flex; flex-direction: column; gap: 0; }
         .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
         input, select, textarea { 
-            padding: 2px 4px; 
-            border: 1px solid #ccc; border-radius: 2px; 
-            font-size: 0.75rem; /* 小さく */
-            height: auto;
+            padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
+            width: 100%; box-sizing: border-box; /* 幅調整用 */
         }
         
-        /* 備考欄 */
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
         
         .timer-display { font-size: 1.1rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 1px 0; }
         
-        /* ボタン類 */
         .btn-row { display: flex; gap: 2px; margin-top: 2px; }
         button { flex: 1; padding: 3px 0; border: none; border-radius: 2px; cursor: pointer; color: white; font-weight: bold; font-size: 0.7rem; transition: opacity 0.2s; }
         button:hover { opacity: 0.8; }
@@ -108,16 +82,13 @@
         .btn-end { background: #52c41a; display: none; }
         .btn-extend { background: #faad14; display: none; }
 
-        /* 名前クリアボタン */
         .btn-clear-name {
             width: 20px; height: 20px; flex: none; 
             background: #999; color: white; border: none; border-radius: 2px; 
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
             margin-left: 2px; padding: 0;
         }
-        .btn-clear-name:hover { background: #777; }
         
-        /* --- 右側：来店者リスト (コンパクト化) --- */
         .visitor-form { background: #fff; padding: 5px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ccc; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 4px; font-size: 0.8rem;}
         
@@ -127,14 +98,12 @@
             font-size: 0.75rem; position: relative; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 5px; 
         }
-        .visitor-time { font-weight: bold; color: var(--primary-color); font-size: 0.7rem;}
         
         textarea.visitor-card-memo { 
             width: 100%; box-sizing: border-box; resize: vertical; height: 2em; 
             margin-top: 2px; font-size: 0.75rem; border: 1px solid #ddd; 
             border-radius: 2px; padding: 2px; background: #fdfdfd; 
         }
-        
         .btn-delete-visitor { 
             position: absolute; top: 3px; right: 3px; 
             background: #e0e0e0; color: #333; width: 16px; height: 16px; 
@@ -142,7 +111,6 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer; 
         }
         
-        /* ログ (下部) */
         .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
         table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
         .log-table th, .log-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
@@ -155,7 +123,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v15</h1>
+            <h1>スーパー管理ボード v16</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -201,7 +169,7 @@
 
     // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
     
-    const firebaseConfig = {
+   const firebaseConfig = {
   apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
   authDomain: "oh-tai.firebaseapp.com",
   projectId: "oh-tai",
@@ -214,7 +182,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const TOTAL_COUNTERS = 15; // 15枠に変更
+    const TOTAL_COUNTERS = 15;
     let localLogs = [];
 
     window.onload = function() {
@@ -235,7 +203,17 @@
                         <button id="btn-clear-name-${i}" class="btn-clear-name" title="クリア">×</button>
                     </div>
                 </div>
-                <div class="input-group"><label>テーブルNo</label><input type="text" id="c-table-${i}" class="c-table"></div>
+                <div style="display:flex; gap:5px;">
+                    <div class="input-group" style="flex:1;">
+                        <label>テーブルNo</label>
+                        <input type="text" id="c-table-${i}" class="c-table">
+                    </div>
+                    <div class="input-group" style="flex:1.2;">
+                        <label>終了予定</label>
+                        <input type="time" id="c-schedule-${i}" class="c-schedule">
+                    </div>
+                </div>
+
                 <div class="input-group"><label>応対内容</label><select id="c-content-${i}" class="c-content"><option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option></select></div>
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
@@ -251,8 +229,9 @@
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
             document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
-            // 稼働中のみDB同期
+            // 変更検知
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
+            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target.value));
         }
     }
 
@@ -304,6 +283,7 @@
         const els = {
             name: document.getElementById(`c-name-${id}`),
             table: document.getElementById(`c-table-${id}`),
+            schedule: document.getElementById(`c-schedule-${id}`),
             content: document.getElementById(`c-content-${id}`),
             memo: document.getElementById(`c-memo-${id}`),
             start: document.getElementById(`btn-start-${id}`),
@@ -315,6 +295,7 @@
 
         if(document.activeElement !== els.name) els.name.value = data.name || "";
         if(document.activeElement !== els.table) els.table.value = data.table || "";
+        if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
@@ -323,11 +304,14 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
+            // 稼働中
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
+            // 終了予定と備考は稼働中も編集可能（ロックしない）
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
+            // 待機中
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
@@ -341,10 +325,15 @@
         const name = document.getElementById(`c-name-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
         const table = document.getElementById(`c-table-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value;
         const memo = document.getElementById(`c-memo-${id}`).value;
+        
         if(!name || !content) { alert("名前と内容を入力"); return; }
+        
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "active", name, table, content, memo, startTime: new Date().toISOString()
+            status: "active", name, table, content, memo, 
+            scheduledEndTime: schedule,
+            startTime: new Date().toISOString()
         });
     };
     
@@ -358,10 +347,17 @@
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
     
+    // メモと終了予定の更新（稼働中のみ）
     window.updateMemo = async (id, text) => {
         const card = document.getElementById(`counter-card-${id}`);
         if (card.classList.contains('status-active')) {
             await updateDoc(doc(db, "counters", String(id)), { memo: text });
+        }
+    };
+    window.updateSchedule = async (id, timeStr) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: timeStr });
         }
     };
 
@@ -380,8 +376,9 @@
             name, table, content, memo, duration, isExtended
         });
         
+        // 名前以外リセット
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "", table: "", content: "", memo: "", startTime: ""
+            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
         });
     };
     
@@ -449,7 +446,7 @@
         if(!confirm("データベースを初期化します(初回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){
             await setDoc(doc(db, "counters", String(i)), {
-                id: i, status: "", name: "", table: "", content: "", memo: "", startTime: ""
+                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
             });
         }
         alert("完了。リロードしてください。");
