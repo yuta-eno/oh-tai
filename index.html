@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v17</title>
+    <title>スーパー管理ボード v18</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -32,7 +32,6 @@
             display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
         }
         
-        /* カウンターエリア */
         .counters-section { flex: 1 1 auto; width: 78%; }
         
         .grid-container { 
@@ -48,7 +47,6 @@
             .grid-container { grid-template-columns: repeat(3, 1fr); } 
         }
 
-        /* 来店者リストエリア */
         .waiting-section { 
             flex: 0 0 22%; min-width: 240px; 
             background: #e6e6e6; padding: 8px; border-radius: 4px; 
@@ -57,7 +55,6 @@
 
         h2 { font-size: 0.8rem; margin: 0 0 5px 0; border-bottom: 2px solid #999; padding-bottom: 2px; color: #555; }
         
-        /* カードスタイル */
         .card { 
             background: var(--card-bg); border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
             padding: 5px; display: flex; flex-direction: column; gap: 2px; 
@@ -67,7 +64,6 @@
         .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
         
-        /* フォーム */
         .input-group { display: flex; flex-direction: column; gap: 0; }
         .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
         input, select, textarea { 
@@ -127,7 +123,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v17</h1>
+            <h1>スーパー管理ボード v18</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -164,10 +160,11 @@
         <table class="log-table">
             <thead>
                 <tr>
-                    <th width="60">終了時刻</th>
+                    <th width="60">開始時刻</th> <th width="60">終了時刻</th>
                     <th width="80">担当者</th>
                     <th width="30">No.</th>
-                    <th width="60">予定</th> <th width="90">用件</th>
+                    <th width="60">予定</th>
+                    <th width="90">用件</th>
                     <th>備考</th>
                     <th width="60">所要時間</th>
                     <th width="40">延長</th>
@@ -285,8 +282,11 @@
             const l = docSnap.data();
             localLogs.push(l);
             const tr = document.createElement('tr');
-            // ログ表示に「終了予定」を追加
-            tr.innerHTML = `<td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            
+            // 開始時刻の表示形式を調整
+            const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
+
+            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
     });
@@ -318,7 +318,7 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // 稼働中はロック (終了予定もロックして途中変更不可に)
+            // 稼働中はロック
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
             els.schedule.disabled = true; 
@@ -381,10 +381,12 @@
         const memo = document.getElementById(`c-memo-${id}`).value;
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
+        const startTimeISO = card.dataset.startTime; // 開始時刻を取得
 
-        // ログに scheduledEndTime を追加
         await addDoc(collection(db, "logs"), {
-            createdAt: serverTimestamp(), endTime: new Date().toLocaleTimeString(),
+            createdAt: serverTimestamp(), 
+            startTime: startTimeISO,
+            endTime: new Date().toLocaleTimeString(),
             name, table, content, memo, duration, isExtended,
             scheduledEndTime: schedule 
         });
@@ -412,10 +414,11 @@
 
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        // CSVヘッダーに「終了予定」追加
-        let csv = "\uFEFF終了時刻,担当者,No,終了予定,用件,備考,所要時間,延長\n";
+        // CSVヘッダーに「開始時刻」追加
+        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,所要時間,延長\n";
         localLogs.forEach(l => {
-            csv += `${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
+            const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
