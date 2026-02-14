@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v13</title>
+    <title>スーパー管理ボード v14</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -15,11 +15,11 @@
         /* ヘッダー */
         header { 
             background: var(--primary-color); color: white; 
-            padding: 5px 15px; 
+            padding: 5px 20px; 
             display: flex; justify-content: space-between; align-items: center; 
-            position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
-        h1 { margin: 0; font-size: 1rem; }
+        h1 { margin: 0; font-size: 1rem; font-weight: bold; }
 
         .header-actions { display: flex; gap: 10px; }
         .header-btn {
@@ -29,47 +29,62 @@
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
-        /* レイアウト調整 (6列x2段) */
-        .main-dashboard { display: flex; flex-wrap: nowrap; gap: 10px; padding: 10px; align-items: flex-start; }
+        /* --- レイアウト調整 (被り防止＆バランス) --- */
+        .main-dashboard { 
+            display: flex; 
+            flex-wrap: wrap; /* 幅が足りないときは安全に折り返す */
+            gap: 20px;       /* 左右の余白をしっかり取る */
+            padding: 20px; 
+            align-items: flex-start; 
+        }
         
+        /* カウンターエリア */
         .counters-section { 
-            flex: 5; /* カウンターエリアを広めに */
-            min-width: 0; /* フレックスボックスでの縮小を許可 */
+            flex: 1 1 70%;   /* 基本70%幅、必要なら縮む/伸びる */
+            min-width: 800px; /* 6列表示を崩さないための最小幅確保 */
         }
         
         .grid-container { 
             display: grid; 
-            /* PC画面で強制的に6列にする */
-            grid-template-columns: repeat(6, 1fr); 
-            gap: 8px; 
+            grid-template-columns: repeat(6, 1fr); /* 強制的に6列 */
+            gap: 10px; 
         }
 
-        /* 画面が狭い場合（タブレット縦など）は列数を減らす */
-        @media (max-width: 1200px) {
+        /* 画面幅に応じたレスポンシブ設定（崩れ防止） */
+        /* 幅が狭くなったら4列→3列→2列と減らす */
+        @media (max-width: 1400px) {
+            .counters-section { min-width: 600px; }
             .grid-container { grid-template-columns: repeat(4, 1fr); }
         }
-        @media (max-width: 800px) {
-            .main-dashboard { flex-wrap: wrap; }
+        @media (max-width: 1000px) {
+            .counters-section { min-width: 100%; } /* 全幅使う */
+            .waiting-section { min-width: 100%; margin-top: 20px; position: static; } /* リストを下に */
+            .grid-container { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 600px) {
             .grid-container { grid-template-columns: repeat(2, 1fr); }
         }
 
+        /* 来店者リストエリア */
         .waiting-section { 
-            flex: 1; 
-            min-width: 250px; 
+            flex: 1 1 250px; /* 基本250px幅 */
             background: #e6e6e6; 
-            padding: 10px; 
-            border-radius: 6px; 
-            max-height: 90vh; 
+            padding: 15px; 
+            border-radius: 8px; 
+            max-height: 85vh; 
             overflow-y: auto; 
-            position: sticky; top: 50px; 
+            /* 画面スクロールに追従 */
+            position: sticky; 
+            top: 60px; 
+            z-index: 10;
         }
 
         h2 { font-size: 0.9rem; margin-top: 0; border-bottom: 2px solid #999; padding-bottom: 5px; margin-bottom: 10px; color: #555; }
         
-        /* カード (コンパクト化) */
+        /* --- カード (コンパクト化) --- */
         .card { 
             background: var(--card-bg); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-            padding: 8px; /* パディング縮小 */
+            padding: 8px; 
             display: flex; flex-direction: column; gap: 4px; 
             border-top: 4px solid #bbb; transition: 0.2s; 
         }
@@ -77,20 +92,19 @@
         .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 5px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
         
-        /* フォーム要素 (コンパクト化) */
+        /* フォーム要素 */
         .input-group { display: flex; flex-direction: column; gap: 1px; }
         .input-group label { font-size: 0.65rem; font-weight: bold; color: #666; }
-        input, select, textarea { padding: 3px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.8rem; }
+        input, select, textarea { padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.8rem; }
         
-        /* 備考欄 */
-        textarea.c-memo { resize: none; height: 3em; font-size: 0.75rem; line-height: 1.2; }
+        textarea.c-memo { resize: none; height: 3em; font-size: 0.75rem; line-height: 1.3; }
         textarea.v-memo { resize: vertical; height: 2.5em; font-size: 0.8rem; }
         
-        .timer-display { font-size: 1.2rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 2px 0; }
+        .timer-display { font-size: 1.3rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 3px 0; }
         
         /* ボタン類 */
-        .btn-row { display: flex; gap: 3px; margin-top: 3px; }
-        button { flex: 1; padding: 4px; border: none; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 0.75rem; transition: opacity 0.2s; }
+        .btn-row { display: flex; gap: 4px; margin-top: 4px; }
+        button { flex: 1; padding: 5px; border: none; border-radius: 3px; cursor: pointer; color: white; font-weight: bold; font-size: 0.75rem; transition: opacity 0.2s; }
         button:hover { opacity: 0.8; }
         .btn-start { background: #1890ff; }
         .btn-end { background: #52c41a; display: none; }
@@ -98,7 +112,7 @@
 
         /* 名前クリアボタン */
         .btn-clear-name {
-            width: 30px; height: 26px; flex: none; 
+            width: 32px; height: 28px; flex: none; 
             background: #999; color: white; border: none; border-radius: 3px; 
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem;
             margin-left: 2px;
@@ -106,16 +120,16 @@
         .btn-clear-name:hover { background: #777; }
         
         /* 来店者リスト */
-        .visitor-form { background: #fff; padding: 8px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ccc; }
+        .visitor-form { background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ccc; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 5px; }
-        .visitor-card { background: white; padding: 6px; border-left: 3px solid var(--primary-color); border-radius: 4px; font-size: 0.8rem; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 6px; }
-        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 2.5em; margin-top: 3px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 3px; padding: 3px; background: #fdfdfd; font-family: inherit; }
-        .btn-delete-visitor { position: absolute; top: 4px; right: 4px; background: #e0e0e0; color: #333; width: 16px; height: 16px; padding: 0; font-size: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .visitor-card { background: white; padding: 8px; border-left: 4px solid var(--primary-color); border-radius: 4px; font-size: 0.85rem; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 8px; }
+        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 2.5em; margin-top: 5px; font-size: 0.8rem; border: 1px solid #ddd; border-radius: 3px; padding: 4px; background: #fdfdfd; font-family: inherit; }
+        .btn-delete-visitor { position: absolute; top: 5px; right: 5px; background: #e0e0e0; color: #333; width: 18px; height: 18px; padding: 0; font-size: 11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         
         /* ログ */
-        .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
-        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .log-table th, .log-table td { border: 1px solid #ddd; padding: 5px; text-align: left; }
+        .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 20px; margin-top: 10px; }
+        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .log-table th, .log-table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         .log-table th { background-color: #eee; white-space: nowrap; }
         .log-table tr:nth-child(even) { background-color: #fcfcfc; }
         
@@ -125,7 +139,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v13</h1>
+            <h1>スーパー管理ボード v14</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回セットアップ（1回だけ押す）</button>
         </div>
         
@@ -221,6 +235,7 @@
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
             document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
+            // 修正：稼働中のみDB同期（入力消失防止）
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
         }
     }
@@ -253,7 +268,7 @@
         });
     });
 
-    // ログ監視: limit(20)を削除し、全件取得に変更
+    // ログ全件取得（limit無し）
     const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"));
     onSnapshot(qLogs, (snapshot) => {
         const tbody = document.getElementById('log-table-body');
@@ -283,6 +298,7 @@
             clearName: document.getElementById(`btn-clear-name-${id}`)
         };
 
+        // 自分が編集中でなければ更新
         if(document.activeElement !== els.name) els.name.value = data.name || "";
         if(document.activeElement !== els.table) els.table.value = data.table || "";
         if(document.activeElement !== els.content) els.content.value = data.content || "";
@@ -293,16 +309,14 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // ロック（名前クリアボタンも）
-            els.name.disabled = true; 
-            els.clearName.disabled = true; 
+            // 稼働中ロック
+            els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            // 待機中
-            els.name.disabled = false; 
-            els.clearName.disabled = false;
+            // 待機中解除
+            els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
@@ -310,7 +324,7 @@
         }
     }
 
-    // --- DB操作アクション ---
+    // --- DB操作 ---
     window.startService = async (id) => {
         const name = document.getElementById(`c-name-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
@@ -332,10 +346,9 @@
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
     
-    // 【修正】待機中（ステータスが空）のときはDB更新しない（入力消失防止）
+    // 【重要】待機中（稼働前）はDB更新しない＝入力が消えない
     window.updateMemo = async (id, text) => {
         const card = document.getElementById(`counter-card-${id}`);
-        // 稼働中(status-active)のみ、リアルタイム同期する
         if (card.classList.contains('status-active')) {
             await updateDoc(doc(db, "counters", String(id)), { memo: text });
         }
@@ -356,7 +369,7 @@
             name, table, content, memo, duration, isExtended
         });
         
-        // 名前(name)以外をクリアする
+        // 名前以外リセット
         await updateDoc(doc(db, "counters", String(id)), {
             status: "", table: "", content: "", memo: "", startTime: ""
         });
