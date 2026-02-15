@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v19</title>
+    <title>スーパー管理ボード v20</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -70,6 +70,8 @@
             padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
             width: 100%; box-sizing: border-box; 
         }
+        /* 確定済みの時刻入力欄は背景をグレーに */
+        input:disabled { background-color: #e0e0e0; color: #555; }
         
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
         
@@ -123,7 +125,7 @@
 <body>
     <header>
         <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v19</h1>
+            <h1>スーパー管理ボード v20</h1>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -243,7 +245,7 @@
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
             document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target.value));
+            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target));
         }
     }
 
@@ -284,9 +286,7 @@
             const l = docSnap.data();
             localLogs.push(l);
             const tr = document.createElement('tr');
-            
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-
             tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
@@ -314,8 +314,8 @@
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
-        // ★終了予定時間のロック制御★
-        // 値がDBに保存されていればロック（入力済みは修正不可）
+        // ★★★ ロック制御 ★★★
+        // 終了予定時間がDBに保存されていればロック（入力済みは修正不可）
         els.schedule.disabled = !!data.scheduledEndTime;
 
         card.classList.remove('status-active', 'status-extended');
@@ -323,9 +323,10 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // 稼働中はロック (終了予定は上記ロジックで制御するためここでは触らない)
+            // 稼働中はロック
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
+            // scheduleのロックは上記の scheduledEndTime チェックで制御
             
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
@@ -333,7 +334,7 @@
             // 待機中
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
-            // els.schedule.disabled = false; // 上記ロジックで制御
+            els.schedule.disabled = false;
             
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
@@ -375,11 +376,20 @@
         }
     };
 
-    // 終了予定時間の更新（稼働中のみ）
-    window.updateSchedule = async (id, timeStr) => {
+    // ★★★ 終了予定の更新（確認付き） ★★★
+    window.updateSchedule = async (id, inputEl) => {
+        const val = inputEl.value;
+        if (!val) return; // 空なら何もしない
+
         const card = document.getElementById(`counter-card-${id}`);
+        // 稼働中のみ更新許可
         if (card.classList.contains('status-active')) {
-            await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: timeStr });
+            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
+                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
+            } else {
+                // キャンセルなら入力を戻す（リロードされるのでそのままでもいいが明示的に）
+                inputEl.value = "";
+            }
         }
     };
 
