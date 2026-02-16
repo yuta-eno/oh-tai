@@ -69,21 +69,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ステップ管理
+// 状態管理
 let currentStep = 0;
 let userData = {
     purpose: "",
     name: "",
     isSubscriber: "",
+    canContact: "",
     hasID: ""
 };
 
-const questions = [
+// 質問（本人連絡は動的に追加）
+const baseQuestions = [
     "いらっしゃいませ。本日はどのようなご用件でしょうか？",
     "ありがとうございます。恐れ入りますが、名字のみお名前を教えていただけますか？",
-    "ありがとうございます。ご契約者ご本人様でしょうか？",
-    "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？"
+    "ありがとうございます。ご契約者ご本人様でしょうか？"
 ];
+const contactQuestion = "契約者ご本人様にお電話などでご連絡は可能でしょうか？";
+const idQuestion = "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？";
+
+let questions = [...baseQuestions, idQuestion];
 
 // 受付開始
 window.beginReception = () => {
@@ -92,7 +97,6 @@ window.beginReception = () => {
     askNext();
 };
 
-// 質問表示
 function askNext() {
     if (currentStep < questions.length) {
         const q = questions[currentStep];
@@ -104,21 +108,11 @@ function askNext() {
 // 音声認識
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = "ja-JP";
-
 recognition.onresult = (e) => handleAnswer(e.results[0][0].transcript);
-recognition.onstart = () => { 
-    document.getElementById("mic-btn").classList.add("listening"); 
-    updateStatus("聞いています...", "green"); 
-};
-recognition.onend = () => { 
-    document.getElementById("mic-btn").classList.remove("listening"); 
-    updateStatus("待機中", "#000"); 
-};
+recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "green"); };
+recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
 
-window.toggleMic = () => { 
-    try { recognition.start(); } 
-    catch(e) { recognition.stop(); } 
-};
+window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
 
 // 回答処理
 async function handleAnswer(text) {
@@ -126,8 +120,16 @@ async function handleAnswer(text) {
 
     if (currentStep === 0) userData.purpose = text;
     if (currentStep === 1) userData.name = text;
-    if (currentStep === 2) userData.isSubscriber = text;
-    if (currentStep === 3) userData.hasID = text;
+    if (currentStep === 2) {
+        userData.isSubscriber = text;
+
+        // 本人でない場合だけ「連絡可能？」を追加
+        if (text.match(/本人ではない|違う|契約者じゃない|家族|代理/)) {
+            questions.splice(3, 0, contactQuestion); // ID確認の前に挿入
+        }
+    }
+    if (questions[currentStep] === contactQuestion) userData.canContact = text;
+    if (questions[currentStep] === idQuestion) userData.hasID = text;
 
     currentStep++;
 
@@ -158,20 +160,19 @@ async function sendToAdmin() {
             name: userData.name + " 様",
             table: "AI受付",
             content: userData.purpose,
-            memo: `本人:${userData.isSubscriber} / 本人確認書類:${userData.hasID}`,
+            memo: `本人:${userData.isSubscriber} / 契約者連絡:${userData.canContact || "本人"} / 本人確認書類:${userData.hasID}`,
             createdAt: serverTimestamp(),
             timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
         });
 
         updateStatus("受付完了", "#000");
-
     } catch(e) {
         console.error(e);
         updateStatus("送信エラー", "red");
     }
 }
 
-// UI
+// UI表示
 function addBubble(t, type) {
     const d = document.createElement("div");
     d.className = "bubble " + type;
@@ -181,7 +182,7 @@ function addBubble(t, type) {
     c.scrollTo(0, c.scrollHeight);
 }
 
-// 音声読み上げ
+// 音声
 function speak(t, auto) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(t);
