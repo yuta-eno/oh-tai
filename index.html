@@ -316,19 +316,25 @@
     });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
-    let isFirstLoad = true;
+let initializedVisitors = false;
 
-    onSnapshot(qVisitors, (snapshot) => {
-        const listDiv = document.getElementById('waiting-list');
-        listDiv.innerHTML = "";
-        
-        // 新規追加を検知したら音を鳴らす
-        if (!isFirstLoad && snapshot.docChanges().some(change => change.type === 'added')) {
+onSnapshot(qVisitors, (snapshot) => {
+
+    const listDiv = document.getElementById('waiting-list');
+    listDiv.innerHTML = "";
+
+    // ★ 新規来店だけ音を鳴らす
+    snapshot.docChanges().forEach(change => {
+        if (initializedVisitors && change.type === "added") {
             if (isSoundEnabled) {
-                playChime(); // プログラム内蔵音源を再生
+                playChime();
             }
         }
-        isFirstLoad = false;
+    });
+
+    // 初回ロード完了
+    initializedVisitors = true;
+
 
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
@@ -548,5 +554,6 @@
 </script>
 </body>
 </html>
+
 
 
