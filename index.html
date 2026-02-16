@@ -34,7 +34,7 @@
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
             display: none; /* 最初は隠しておき、JSで表示判定 */
         }
-        
+
         .main-dashboard { 
             display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
         }
@@ -77,6 +77,7 @@
             padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
             width: 100%; box-sizing: border-box; 
         }
+        /* 確定済みの時刻入力欄は背景をグレーに */
         input:disabled { background-color: #e0e0e0; color: #555; }
         
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
@@ -232,6 +233,7 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
+            // step="300" で5分刻みに
             div.innerHTML = `
                 <div class="input-group">
                     <label>担当者名</label>
@@ -323,8 +325,84 @@
             const l = docSnap.data();
             localLogs.push(l);
             const tr = document.createElement('tr');
-            
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
+            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            tbody.appendChild(tr);
+        });
+    });
 
-            tr.innerHTML = `<td>${startTimeStr}</td>
+    // --- UI更新 ---
+    function updateCardUI(id, data) {
+        const card = document.getElementById(`counter-card-${id}`);
+        const els = {
+            name: document.getElementById(`c-name-${id}`),
+            table: document.getElementById(`c-table-${id}`),
+            schedule: document.getElementById(`c-schedule-${id}`),
+            content: document.getElementById(`c-content-${id}`),
+            memo: document.getElementById(`c-memo-${id}`),
+            start: document.getElementById(`btn-start-${id}`),
+            extend: document.getElementById(`btn-extend-${id}`),
+            end: document.getElementById(`btn-end-${id}`),
+            timer: document.getElementById(`timer-${id}`),
+            clearName: document.getElementById(`btn-clear-name-${id}`)
+        };
 
+        if(document.activeElement !== els.name) els.name.value = data.name || "";
+        if(document.activeElement !== els.table) els.table.value = data.table || "";
+        if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
+        if(document.activeElement !== els.content) els.content.value = data.content || "";
+        if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
+
+        // ★★★ ロック制御 ★★★
+        // 終了予定時間がDBに保存されていればロック（入力済みは修正不可）
+        els.schedule.disabled = !!data.scheduledEndTime;
+
+        card.classList.remove('status-active', 'status-extended');
+        if (data.status === 'active' || data.status === 'extended') {
+            card.classList.add('status-active');
+            if (data.status === 'extended') card.classList.add('status-extended');
+            
+            // 稼働中はロック
+            els.name.disabled = true; els.clearName.disabled = true;
+            els.table.disabled = true; els.content.disabled = true;
+            // scheduleのロックは上記の scheduledEndTime チェックで制御
+            
+            els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
+            card.dataset.startTime = data.startTime || "";
+        } else {
+            // 待機中
+            els.name.disabled = false; els.clearName.disabled = false;
+            els.table.disabled = false; els.content.disabled = false;
+            els.schedule.disabled = false;
+            
+            els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
+            els.timer.innerText = "00:00:00";
+            card.dataset.startTime = "";
+        }
+    }
+
+    // --- DB操作 ---
+    window.startService = async (id) => {
+        const name = document.getElementById(`c-name-${id}`).value;
+        const content = document.getElementById(`c-content-${id}`).value;
+        const table = document.getElementById(`c-table-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value;
+        const memo = document.getElementById(`c-memo-${id}`).value;
+        
+        if(!name || !content) { alert("名前と内容を入力"); return; }
+        
+        await updateDoc(doc(db, "counters", String(id)), {
+            status: "active", name, table, content, memo, 
+            scheduledEndTime: schedule,
+            startTime: new Date().toISOString()
+        });
+    };
+    
+    window.clearName = async (id) => {
+        await updateDoc(doc(db, "counters", String(id)), { name: "" });
+    };
+
+    window.toggleExtend = async (id) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
+        await updateDoc(doc(db, "counters", String(id)), { s
