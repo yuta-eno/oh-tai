@@ -33,7 +33,9 @@
             background: #ff9800; color: white; border: none; padding: 5px 10px; 
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
             display: none; /* 最初は隠しておき、JSで表示判定 */
+            animation: flash 2s infinite;
         }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
         .main-dashboard { 
             display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
@@ -77,7 +79,6 @@
             padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
             width: 100%; box-sizing: border-box; 
         }
-        /* 確定済みの時刻入力欄は背景をグレーに */
         input:disabled { background-color: #e0e0e0; color: #555; }
         
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
@@ -191,17 +192,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
-    
+    // ★★★ Firebaseの設定 (自動入力済み) ★★★
     const firebaseConfig = {
-  apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-  authDomain: "oh-tai.firebaseapp.com",
-  projectId: "oh-tai",
-  storageBucket: "oh-tai.firebasestorage.app",
-  messagingSenderId: "1070284840120",
-  appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
-    
+      apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+      authDomain: "oh-tai.firebaseapp.com",
+      projectId: "oh-tai",
+      storageBucket: "oh-tai.firebasestorage.app",
+      messagingSenderId: "1070284840120",
+      appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+    };
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     const app = initializeApp(firebaseConfig);
@@ -212,23 +211,21 @@
 
     window.onload = function() {
         createCards();
-        // 音声許可ボタンの表示制御
+        // 読み込み完了後に音声ボタンを表示
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
     };
 
-    // 音声を有効化する関数
+    // 音声を有効化する
     window.enableSound = function() {
         const audio = document.getElementById('sound-chime');
-        // 一瞬だけ無音で再生して、ブラウザに「再生許可」をもらう
         audio.play().then(() => {
             audio.pause();
             audio.currentTime = 0;
             isSoundEnabled = true;
-            document.getElementById('btn-enable-sound').style.display = 'none'; // ボタンを隠す
+            document.getElementById('btn-enable-sound').style.display = 'none';
             alert("通知音がオンになりました♪");
         }).catch(err => {
-            console.error("再生できませんでした", err);
-            alert("音声を再生できませんでした。端末の設定を確認してください。");
+            alert("音声を再生できません。端末のマナーモード等を確認してください。");
         });
     };
 
@@ -238,7 +235,6 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
-            // step="300" で5分刻みに
             div.innerHTML = `
                 <div class="input-group">
                     <label>担当者名</label>
@@ -278,28 +274,26 @@
         }
     }
 
-    // --- リアルタイム監視 ---
     onSnapshot(collection(db, "counters"), (snapshot) => {
         snapshot.forEach((docSnap) => {
             updateCardUI(docSnap.id, docSnap.data());
         });
     });
 
+    // 来店者リスト監視（音を鳴らす処理含む）
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
-    
-    // 初回読み込み時に大量に鳴るのを防ぐフラグ
     let isFirstLoad = true;
 
     onSnapshot(qVisitors, (snapshot) => {
         const listDiv = document.getElementById('waiting-list');
         listDiv.innerHTML = "";
         
-        // 変更があった（追加された）場合のみ音を鳴らす
+        // 新規追加があったら音を鳴らす
         if (!isFirstLoad && snapshot.docChanges().some(change => change.type === 'added')) {
             if (isSoundEnabled) {
                 const audio = document.getElementById('sound-chime');
                 audio.currentTime = 0;
-                audio.play().catch(e => console.log("再生エラー(インタラクション未済など):", e));
+                audio.play().catch(e => console.log("再生エラー:", e));
             }
         }
         isFirstLoad = false;
@@ -336,7 +330,6 @@
         });
     });
 
-    // --- UI更新 ---
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
         const els = {
@@ -358,8 +351,6 @@
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
-        // ★★★ ロック制御 ★★★
-        // 終了予定時間がDBに保存されていればロック（入力済みは修正不可）
         els.schedule.disabled = !!data.scheduledEndTime;
 
         card.classList.remove('status-active', 'status-extended');
@@ -367,15 +358,12 @@
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
             
-            // 稼働中はロック
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
-            // scheduleのロックは上記の scheduledEndTime チェックで制御
             
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            // 待機中
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
             els.schedule.disabled = false;
@@ -386,7 +374,6 @@
         }
     }
 
-    // --- DB操作 ---
     window.startService = async (id) => {
         const name = document.getElementById(`c-name-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
@@ -410,5 +397,7 @@
     window.toggleExtend = async (id) => {
         const card = document.getElementById(`counter-card-${id}`);
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
-        await updateDoc(doc(db, "counters", String(id)), { s
-
+        await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
+    };
+    
+    window.updateMemo = async (i
