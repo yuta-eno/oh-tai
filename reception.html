@@ -264,17 +264,17 @@ if (userData.hasID.match(/ない|持ってない|未所持/)) {
 finalMsg += "現在予約のお客様がいらっしゃるため、スタッフが手続き可能な時間を伝えにまいります。このままお待ちください。";
 
 addBubble(finalMsg, "ai");
-await speak(finalMsg);   // ★ 完全に喋り終わるまで待つ
+await speak(finalMsg);   // ← 本当に喋り終わるまで待つ
 
 await sendToAdmin();
 
-// 5秒待ってから次の受付案内
+// 5秒待機
 await new Promise(r => setTimeout(r, 5000));
 
 addBubble("次の受付を待機します。受付開始ボタンを押してください。", "ai");
 await speak("次の受付を待機します。");
 
-// さらに5秒で初期化
+// 初期化
 setTimeout(resetReception, 5000);
 }
 
@@ -321,14 +321,22 @@ function addBubble(t, type) {
 }
 
 /* ===== 音声読み上げ ===== */
-function speak(t, auto) {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = "ja-JP";
-    u.pitch = 1.5;
-    u.rate = 1.1;
-    u.onend = () => { if(auto) setTimeout(() => toggleMic(), 300); };
-    window.speechSynthesis.speak(u);
+function speak(text, auto = false) {
+    return new Promise(resolve => {
+        window.speechSynthesis.cancel();
+
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "ja-JP";
+        u.pitch = 1.5;
+        u.rate = 1.1;
+
+        u.onend = () => {
+            if (auto) setTimeout(() => toggleMic(), 300);
+            resolve(); // ← 喋り終わったら完了
+        };
+
+        window.speechSynthesis.speak(u);
+    });
 }
 
 /* ===== ステータス ===== */
