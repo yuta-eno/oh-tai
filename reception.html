@@ -49,17 +49,17 @@
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
         const systemInstruction = `
-            あなたはドコモショップの受付です。以下の手順を機械的に実行してください。
-            1. 挨拶し「名字のみお名前を教えてください」と言う。
-            2. 名前を聞いたら、復唱せずに「ご用件を教えてください」と言う。
-            3. ご用件を聞いたら「ご契約者ご本人様でしょうか？」と聞く。
-            4. 本人確認書類の原本（免許証等）があるか聞く。
-            5. 全て終わったら必ず「ご対応予定時間をスタッフがお伝えしにまいります。」で締める。
+            あなたはドコモショップの受付です。以下の手順を厳守してください。
+            1. 挨拶し、「ご用件を教えてください」と聞く。
+            2. ご用件を聞いたら、「ご契約者ご本人様でしょうか？」と聞く。
+            3. 本人確認書類（免許証等）の原本があるか聞く。
+            4. 最後に「恐れ入りますが、名字のみお名前を教えていただけますか？」と聞く。
+            5. 名前を聞いたら、復唱や由来の解説は絶対にせず、「ありがとうございます。ご対応予定時間をスタッフがお伝えしにまいります。」で締める。
 
-            【禁止事項】
-            - お名前の由来を話す、機種のアドバイスをする、などの雑談は一切禁止。
-            - ユーザーの発言を記録・管理するための受付業務に徹してください。
-            - 記号・絵文字は絶対に出さない。60文字以内。
+            【絶対ルール】
+            - 雑談（名前の由来、機種の感想など）は1ミリも行わない。
+            - ユーザーが名前を言ったら、即座に終了のセリフへ進む。
+            - 記号・絵文字禁止。60文字以内。
         `;
 
         let chat = model.startChat({ history: [] });
@@ -78,7 +78,7 @@
         function updateStatus(text, color) { const el = document.getElementById("status-bar"); el.innerText = text; el.style.backgroundColor = color; }
 
         window.onload = () => {
-            const welcome = "いらっしゃいませ。恐れ入りますが、名字のみお名前を教えていただけますか？";
+            const welcome = "いらっしゃいませ。ドコモショップへようこそ。本日はどのようなご用件でしょうか？";
             addBubble(welcome, "ai");
             speak(welcome, true);
         };
@@ -86,7 +86,7 @@
         async function processInput(text) {
             if(!text.trim()) return;
             addBubble(text, "user");
-            updateStatus("AIが確認中...", "blue");
+            updateStatus("確認中...", "blue");
 
             try {
                 const result = await chat.sendMessage(text);
@@ -103,7 +103,7 @@
             } catch (e) {
                 console.error(e);
                 updateStatus("エラー発生。もう一度話してください", "red");
-                setTimeout(() => toggleMic(), 2000);
+                setTimeout(() => toggleMic(), 1500);
             }
         }
 
@@ -116,14 +116,14 @@
                     以下の会話から情報を抜き出してください。
                     会話: ${conversationText}
                     出力形式: 名字, 用件(新規/機種変/支払/故障/相談/その他), 備考(本人か、書類あるか、詳細内容)
-                    ※余計な文字は一切書かず、カンマ区切り1行だけで出力。
+                    ※余計な文字は一切書かず、カンマ区切り1行だけで出力。名前が不明なら「お客様」とする。
                 `;
                 
                 const result = await model.generateContent(extractor);
                 const rawResult = result.response.text().split(",");
                 
                 const finalData = {
-                    name: (rawResult[0] || "不明").trim() + " 様",
+                    name: (rawResult[0] || "お客様").trim() + " 様",
                     table: "AI",
                     content: (rawResult[1] || "その他").trim(),
                     memo: (rawResult[2] || conversationText).trim(),
@@ -158,3 +158,4 @@
     </script>
 </body>
 </html>
+
