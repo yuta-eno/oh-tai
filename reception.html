@@ -2,217 +2,195 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ドコモショップ AI受付</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>かんたん受付</title>
 
 <style>
-:root { --primary: #cc0000; }
-body { 
-    font-family: "Hiragino Kaku Gothic ProN", sans-serif; 
-    margin: 0; background-color: #f7f7f7; display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
-    background-image: url('reception1.png'); 
-    background-size: 100% auto; background-position: center top; background-repeat: no-repeat;
+/* ===== 全体 ===== */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif;
+  background: #f7f7f7;
+  text-align: center;
 }
-header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-#status-bar { background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px; text-align: center; font-size: 18px; z-index: 10; }
 
-#chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: rgba(255, 255, 255, 0.2); }
-.bubble { padding: 20px 25px; border-radius: 20px; max-width: 80%; line-height: 1.4; font-size: 26px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-.ai { background: rgba(245, 245, 245, 0.95); align-self: flex-start; border: 1px solid #ccc; color: #000; }
-.user { background: rgba(255, 240, 240, 0.95); border: 3px solid var(--primary); align-self: flex-end; color: #cc0000; }
-
-#controls { 
-    background: rgba(255, 255, 255, 0.9); border-top: 1px solid #ccc; 
-    padding: 20px 20px calc(60px + env(safe-area-inset-bottom));
-    text-align: center; z-index: 10; 
+/* ===== 背景透かし画像（中央固定） ===== */
+body::before {
+  content: "";
+  position: fixed;
+  top: 120px;     /* ヘッダー+進捗バー */
+  bottom: 160px;  /* 受付開始ボタン領域 */
+  left: 0;
+  right: 0;
+  background: url('reception.png') center center / contain no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
 }
-#start-btn { width: 90%; padding: 30px; font-size: 36px; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #a00000; }
-#start-btn:active { transform: translateY(4px); box-shadow: none; }
 
-#action-area { display: none; }
-#mic-btn { 
-    width: 100px; height: 100px; border-radius: 50%; background: #fff; color: var(--primary); 
-    border: 4px solid var(--primary); font-size: 45px; cursor: pointer; transition: 0.2s;
-    display: flex; align-items: center; justify-content: center; margin: 0 auto;
+/* ===== ヘッダー ===== */
+header {
+  background: #2196f3;
+  color: white;
+  padding: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-#mic-btn.listening { background: var(--primary); color: #fff; transform: scale(1.1); box-shadow: 0 0 15px rgba(204,0,0,0.3); }
+
+/* ===== 進捗バー ===== */
+#progress {
+  background: #ddd;
+  height: 10px;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #4caf50;
+  transition: width 0.3s;
+}
+
+/* ===== メイン ===== */
+main {
+  padding: 20px;
+  position: relative;
+  z-index: 1; /* 背景より前に */
+}
+
+.question {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+/* ===== ボタン ===== */
+button {
+  padding: 14px 20px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  margin: 10px;
+  cursor: pointer;
+}
+
+.btn-yes { background: #4caf50; color: white; }
+.btn-no  { background: #f44336; color: white; }
+
+/* ===== フッター受付開始 ===== */
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 12px;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+#startBtn {
+  width: 90%;
+  padding: 16px;
+  font-size: 20px;
+  background: #ff9800;
+  color: white;
+  border-radius: 12px;
+  border: none;
+}
 </style>
 </head>
 
 <body>
-<header>ドコモショップ 受付</header>
-<div id="status-bar">準備完了</div>
-<div id="chat-container"></div>
 
-<div id="controls">
-    <button id="start-btn" onclick="beginReception()">受付をはじめる</button>
-    <div id="action-area">
-        <button id="mic-btn" onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
-        <div style="font-size:20px; font-weight:bold; margin-top:10px; color:#333;">お話しください</div>
-    </div>
+<header>
+  かんたん受付
+</header>
+
+<div id="progress">
+  <div id="progress-bar"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+<main id="main">
+  <div class="question" id="questionText"></div>
+  <div id="buttons"></div>
+</main>
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-    authDomain: "oh-tai.firebaseapp.com",
-    projectId: "oh-tai",
-    storageBucket: "oh-tai.firebasestorage.app",
-    messagingSenderId: "1070284840120",
-    appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
+<footer>
+  <button id="startBtn">受付開始</button>
+</footer>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// ===== 状態 =====
-let currentStep = 0;
-let userData = {
-    purpose: "",
-    name: "",
-    isSubscriber: "",
-    canContact: "",
-    hasID: ""
-};
-
-// ===== 質問定義 =====
-const baseQuestions = [
-    "いらっしゃいませ。本日はどのようなご用件でしょうか？",
-    "ありがとうございます。恐れ入りますが、名字のみお名前を教えていただけますか？",
-    "ありがとうございます。ご契約者ご本人様でしょうか？"
+<script>
+/* ===== 質問フロー ===== */
+const questions = [
+  {
+    text: "契約者ご本人ですか？",
+    options: [
+      { label: "はい", next: 1 },
+      { label: "いいえ", next: 2 }
+    ]
+  },
+  {
+    text: "ご用件を選択してください",
+    options: [
+      { label: "料金の確認", next: null },
+      { label: "契約内容の変更", next: null }
+    ]
+  },
+  {
+    text: "手続き時に契約者ご本人へ連絡は可能ですか？",
+    options: [
+      { label: "はい", next: 1 },
+      { label: "いいえ", next: null }
+    ]
+  }
 ];
-const contactQuestion = "手続きの際、ご契約者ご本人様にお電話などでご連絡は可能でしょうか？";
-const idQuestion = "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？";
 
-let questions = [...baseQuestions, idQuestion];
+let currentIndex = 0;
 
-// ===== 本人じゃない判定 =====
-function isNotSubscriber(text) {
-    return /本人じゃない|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(text);
+/* ===== 表示更新 ===== */
+function showQuestion() {
+  const q = questions[currentIndex];
+  document.getElementById("questionText").innerText = q.text;
+
+  const btnArea = document.getElementById("buttons");
+  btnArea.innerHTML = "";
+
+  q.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.innerText = opt.label;
+    btn.className = opt.label === "はい" ? "btn-yes" : "btn-no";
+    btn.onclick = () => {
+      if (opt.next !== null) {
+        currentIndex = opt.next;
+        updateProgress();
+        showQuestion();
+      } else {
+        alert("受付内容を確定しました");
+      }
+    };
+    btnArea.appendChild(btn);
+  });
 }
 
-// ===== 受付開始 =====
-window.beginReception = () => {
-    document.getElementById("start-btn").style.display = "none";
-    document.getElementById("action-area").style.display = "block";
-    askNext();
+/* ===== 進捗バー ===== */
+function updateProgress() {
+  const percent = ((currentIndex) / (questions.length - 1)) * 100;
+  document.getElementById("progress-bar").style.width = percent + "%";
+}
+
+/* ===== 受付開始 ===== */
+document.getElementById("startBtn").onclick = () => {
+  currentIndex = 0;
+  updateProgress();
+  showQuestion();
 };
 
-// ===== 質問表示 =====
-function askNext() {
-    if (currentStep < questions.length) {
-        const q = questions[currentStep];
-        addBubble(q, "ai");
-        speak(q, true);
-    }
-}
-
-// ===== 音声認識 =====
-const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = "ja-JP";
-recognition.onresult = (e) => handleAnswer(e.results[0][0].transcript);
-recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "green"); };
-recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
-window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
-
-// ===== 回答処理 =====
-async function handleAnswer(text) {
-    addBubble(text, "user");
-
-    if (currentStep === 0) userData.purpose = text;
-    if (currentStep === 1) userData.name = text;
-
-    // 本人判定
-    if (currentStep === 2) {
-        userData.isSubscriber = text;
-
-        // 本人でない → 連絡可否質問を必ず挿入
-        if (isNotSubscriber(text)) {
-            questions.splice(3, 0, contactQuestion);
-        }
-    }
-
-    // 契約者連絡可否
-    if (questions[currentStep] === contactQuestion) {
-        userData.canContact = text;
-    }
-
-    // 本人確認書類
-    if (questions[currentStep] === idQuestion) {
-        userData.hasID = text;
-    }
-
-    currentStep++;
-
-    if (currentStep < questions.length) {
-        setTimeout(askNext, 800);
-        return;
-    }
-
-    // ===== 最終案内 =====
-    let finalMsg = "ありがとうございます。";
-    if (userData.hasID.match(/ない|持ってない|未所持/)) {
-        finalMsg += "本人確認書類が無い場合、できる手続きが限られることがございます。";
-    }
-    finalMsg += "現在予約のお客様がいらっしゃるため、スタッフが手続き可能な時間を伝えにまいります。このままお待ちください。";
-
-    addBubble(finalMsg, "ai");
-    speak(finalMsg, false);
-
-    await sendToAdmin();
-}
-
-// ===== Firestore送信 =====
-async function sendToAdmin() {
-    updateStatus("管理ボードへ送信中...", "orange");
-
-    try {
-        await addDoc(collection(db, "visitors"), {
-            name: userData.name + " 様",
-            table: "AI受付",
-            content: userData.purpose,
-            memo: `本人:${userData.isSubscriber} / 契約者連絡:${userData.canContact || "本人"} / 本人確認書類:${userData.hasID}`,
-            createdAt: serverTimestamp(),
-            timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-        });
-
-        updateStatus("受付完了", "#000");
-    } catch(e) {
-        console.error(e);
-        updateStatus("送信エラー", "red");
-    }
-}
-
-// ===== UI =====
-function addBubble(t, type) {
-    const d = document.createElement("div");
-    d.className = "bubble " + type;
-    d.innerText = t;
-    const c = document.getElementById("chat-container");
-    c.appendChild(d);
-    c.scrollTo(0, c.scrollHeight);
-}
-
-// ===== 音声読み上げ =====
-function speak(t, auto) {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = "ja-JP";
-    u.pitch = 1.5;
-    u.rate = 1.1;
-    u.onend = () => { if(auto) setTimeout(() => toggleMic(), 300); };
-    window.speechSynthesis.speak(u);
-}
-
-// ===== ステータス表示 =====
-function updateStatus(t, c) {
-    document.getElementById("status-bar").innerText = t;
-    document.getElementById("status-bar").style.backgroundColor = c;
-}
+/* 初期表示 */
+showQuestion();
 </script>
+
 </body>
 </html>
