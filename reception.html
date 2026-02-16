@@ -5,34 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ドコモショップ AI受付</title>
     <style>
-        :root { --primary: #cc0000; }
-        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; margin: 0; background: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 36px; font-weight: bold; border-bottom: 8px solid #a00000; }
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 40px; background: #fdfdfd; }
-        .bubble { padding: 35px; border-radius: 25px; max-width: 85%; font-size: 42px; font-weight: bold; line-height: 1.4; box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
-        .ai { background: #f0f0f0; align-self: flex-start; border: 4px solid #bbb; color: #000; }
-        .user { background: #fff0f0; border: 6px solid var(--primary); align-self: flex-end; color: #cc0000; }
-        #controls { background: #eee; padding: 30px; border-top: 8px solid #ccc; padding-bottom: 60px; }
-        #options { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .option-btn { background: #fff; border: 6px solid var(--primary); color: var(--primary); padding: 35px 10px; border-radius: 25px; font-size: 36px; font-weight: bold; box-shadow: 0 6px 0 var(--primary); }
-        .option-btn:active { transform: translateY(6px); box-shadow: none; background: var(--primary); color: #fff; }
-        #mic-btn { width: 160px; height: 160px; border-radius: 50%; background: var(--primary); color: white; border: 10px solid #fff; font-size: 90px; margin-top: 20px; box-shadow: 0 0 25px rgba(0,0,0,0.4); }
-        #mic-btn.listening { background: #00aa00; animation: pulse 1s infinite; }
+        :root { --primary: #cc0000; --bg: #ffffff; }
+        body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; margin: 0; background: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 32px; font-weight: bold; border-bottom: 8px solid #a00000; }
+        #status-bar { background: #000; color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 24px; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; }
+        .bubble { padding: 30px; border-radius: 20px; max-width: 85%; line-height: 1.4; font-size: 36px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .ai { background: #f0f0f0; align-self: flex-start; color: #000; border: 3px solid #ccc; }
+        .user { background: #fff0f0; border: 4px solid var(--primary); align-self: flex-end; color: #cc0000; }
+        #controls { background: #eee; border-top: 5px solid #ccc; padding: 20px; padding-bottom: 60px; text-align: center; }
+        #mic-btn { width: 140px; height: 140px; border-radius: 50%; background: var(--primary); color: white; border: 8px solid #fff; font-size: 70px; cursor: pointer; }
+        #mic-btn.listening { background: #008000; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .mic-label { font-size: 24px; font-weight: bold; margin-top: 10px; color: #000; }
     </style>
 </head>
 <body>
     <header>ドコモショップ 受付</header>
+    <div id="status-bar">準備完了</div>
     <div id="chat-container"></div>
-    <div id="controls" style="text-align:center;">
-        <div id="options">
-            <button class="option-btn" onclick="sendText('新規契約')">新規契約</button>
-            <button class="option-btn" onclick="sendText('機種変更')">機種変更</button>
-            <button class="option-btn" onclick="sendText('支払い変更')">支払変更</button>
-            <button class="option-btn" onclick="sendText('故障・修理')">故障修理</button>
-        </div>
+    <div id="controls">
         <button id="mic-btn" onclick="toggleMic()">🎤</button>
-        <div style="font-size:28px; font-weight:bold; margin-top:10px; color:#333;">ここを押して話す</div>
+        <div class="mic-label">ここを押して受付開始</div>
     </div>
 
     <script type="module">
@@ -40,7 +34,6 @@
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-        // ★あなたのFirebase設定 (提供いただいたもの)
         const firebaseConfig = {
             apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
             authDomain: "oh-tai.firebaseapp.com",
@@ -55,71 +48,98 @@
         const genAI = new GoogleGenerativeAI("AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ");
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
+        // ヒアリング項目を厳格化
+        const systemInstruction = `
+            あなたはドコモショップの受付です。以下の手順で1つずつ質問してください。
+            1. 挨拶し、名字のみお名前を聞く。
+            2. ご用件を聞く。
+            3. ご契約者本人か聞く。
+            4. 本人確認書類（原本）があるか聞く。
+            5. 全て聞き終えたら必ず「ご対応予定時間をスタッフがお伝えしにまいります。」と言って締める。
+            
+            ※余計なアドバイスは不要。簡潔に。絵文字・記号禁止。
+        `;
+
         let chat = model.startChat({ history: [] });
 
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = "ja-JP";
+        recognition.onresult = (e) => processInput(e.results[0][0].transcript);
+        recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("お話しください", "green"); };
+        recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
+        
+        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
+
+        function updateStatus(text, color) { const el = document.getElementById("status-bar"); el.innerText = text; el.style.backgroundColor = color; }
+
         window.onload = () => {
-            const welcome = "いらっしゃいませ。ご用件を教えてください。";
+            const welcome = "いらっしゃいませ。恐れ入りますが、名字のみお名前をお教えいただけますか？";
             addBubble(welcome, "ai");
-            speak(welcome);
+            speak(welcome, true); // 最初からマイク自動ON
         };
 
-        window.sendText = async (text) => {
-            if(!text) return;
+        async function processInput(text) {
             addBubble(text, "user");
+            updateStatus("確認中...", "blue");
 
             try {
-                // ★index.htmlの「visitors」が待ち構えている形式に完全一致させる
-                await addDoc(collection(db, "visitors"), {
-                    name: "AI受付",
-                    table: "AI端末",
-                    content: text, // 用件
-                    memo: "タブレットからの自動受付",
-                    createdAt: serverTimestamp(),
-                    // index.htmlの表示用時刻形式
-                    timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-                });
-
-                // AIの返答生成
-                const prompt = text + "。あなたはドコモの受付です。丁寧な日本語で、本人確認書類の有無を確認する内容を60文字以内で返して。絵文字は絶対に使わないで。";
-                const result = await chat.sendMessage(prompt);
+                const result = await chat.sendMessage(text);
                 const response = result.response.text();
                 
                 addBubble(response, "ai");
-                speak(response);
-            } catch (e) {
-                console.error("送信エラー:", e);
-                alert("通信エラーが発生しました。");
-            }
-        };
 
-        // 音声認識
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = (SpeechRecognition) ? new SpeechRecognition() : null;
-        if(recognition) {
-            recognition.lang = "ja-JP";
-            recognition.onresult = (e) => window.sendText(e.results[0][0].transcript);
-            recognition.onstart = () => document.getElementById("mic-btn").classList.add("listening");
-            recognition.onend = () => document.getElementById("mic-btn").classList.remove("listening");
+                // 最後の決め台詞が出たら、データを1回だけ飛ばす
+                if (response.includes("スタッフがお伝えしにまいります")) {
+                    await sendFinalDataToDB();
+                    speak(response, false); // 最後はマイクをONにしない
+                } else {
+                    speak(response, true); // 会話中は常に喋り終わったらマイクON
+                }
+            } catch (e) { console.error(e); }
         }
-        
-        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
+
+        // 会話履歴を解析して1回だけ送信
+        async function sendFinalDataToDB() {
+            try {
+                const history = await chat.getHistory();
+                // 履歴からユーザーの発言を抽出
+                const userMessages = history.filter(h => h.role === "user").map(h => h.parts[0].text);
+                
+                // AIに内容を要約させてからDBに送る（確実に項目を分けるため）
+                const summaryPrompt = `
+                    以下の会話から情報を抽出してJSONで答えて。
+                    会話: ${userMessages.join(" / ")}
+                    項目: { "name": "名字のみ", "type": "新規/機種変/支払/故障/相談/その他", "memo": "本人か、書類あるか、その他詳細" }
+                `;
+                const result = await model.generateContent(summaryPrompt);
+                const data = JSON.parse(result.response.text().replace(/```json|```/g, ""));
+
+                await addDoc(collection(db, "visitors"), {
+                    name: data.name + " 様",
+                    table: "AI",
+                    content: data.type,
+                    memo: data.memo,
+                    createdAt: serverTimestamp(),
+                    timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+                });
+            } catch(e) { console.error("データ送信失敗:", e); }
+        }
 
         function addBubble(t, type) {
             const d = document.createElement("div");
             d.className = "bubble " + type;
-            // 読み上げの邪魔になる文字を除去して表示
             d.innerText = t.replace(/[*_]/g, '');
             const c = document.getElementById("chat-container");
             c.appendChild(d);
             c.scrollTo(0, c.scrollHeight);
         }
 
-        function speak(t) {
+        function speak(t, autoMic) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(t.replace(/[*_]/g, ''));
-            u.lang = "ja-JP";
-            u.pitch = 1.3; // 少し高めで聞き取りやすく
-            u.rate = 1.0;
+            u.lang = "ja-JP"; u.pitch = 1.3;
+            u.onend = () => { if(autoMic) toggleMic(); }; // ★喋り終わったらマイク起動
             window.speechSynthesis.speak(u);
         }
     </script>
