@@ -5,138 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ドコモショップ AI受付</title>
     <style>
-        /* --- デザイン（タブレット最適化・巨大文字） --- */
-        :root {
-            --primary: #cc0000;
-            --bg: #f8f9fa;
-        }
-
-        body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            margin: 0; padding: 0;
-            background-color: var(--bg);
-            display: flex; flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            font-size: 20px; /* 文字ベースサイズ */
-            -webkit-user-select: none; /* 長押し選択禁止 */
-            user-select: none;
-        }
-
-        header {
-            background: var(--primary); color: white;
-            padding: 20px; text-align: center;
-            font-size: 26px; font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-
-        #status-bar {
-            background: #333; color: white;
-            padding: 15px; text-align: center; font-weight: bold;
-            font-size: 20px;
-            transition: background-color 0.3s;
-        }
-
-        /* チャットエリア */
-        #chat-container {
-            flex: 1; overflow-y: auto;
-            padding: 30px; display: flex; flex-direction: column; gap: 25px;
-            background: white;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .bubble {
-            padding: 25px 35px; border-radius: 35px;
-            max-width: 80%; line-height: 1.5; position: relative;
-            font-size: 28px; /* 吹き出し文字特大 */
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        }
-
-        .ai { 
-            background: #f0f0f0; align-self: flex-start; margin-left: 15px;
-            border-top-left-radius: 5px; 
-        }
+        :root { --primary: #cc0000; --bg: #f8f9fa; }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; font-size: 20px; -webkit-user-select: none; user-select: none; }
+        header { background: var(--primary); color: white; padding: 20px; text-align: center; font-size: 26px; font-weight: bold; z-index: 10; }
+        #status-bar { background: #333; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 20px; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; gap: 25px; background: white; -webkit-overflow-scrolling: touch; }
+        .bubble { padding: 25px 35px; border-radius: 35px; max-width: 85%; line-height: 1.5; position: relative; font-size: 28px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        .ai { background: #f0f0f0; align-self: flex-start; margin-left: 15px; border-top-left-radius: 5px; }
         .ai::before { content: "👩‍💼"; position: absolute; top: -45px; left: 0; font-size: 40px; }
-
-        .user { 
-            background: #ffebee; border: 2px solid var(--primary); 
-            align-self: flex-end; margin-right: 15px; color: #b71c1c;
-            border-top-right-radius: 5px;
-        }
+        .user { background: #ffebee; border: 2px solid var(--primary); align-self: flex-end; margin-right: 15px; color: #b71c1c; border-top-right-radius: 5px; }
+        #controls { background: white; border-top: 1px solid #ddd; padding: 20px; text-align: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px; }
         
-        /* 操作エリア（下に余白確保） */
-        #controls {
-            background: white; border-top: 1px solid #ddd;
-            padding: 20px; text-align: center;
-            /* ナビゲーションバー対策：安全領域 + 20px */
-            padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
-            display: flex; flex-direction: column; gap: 20px;
-        }
-
-        /* 選択肢ボタン群 */
-        #options { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
-        
-        .option-btn {
-            background: white; border: 2px solid var(--primary); color: var(--primary);
-            padding: 15px 30px; border-radius: 50px;
-            font-size: 22px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            min-width: 160px;
-        }
+        /* ボタンレイアウト調整 */
+        #options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 600px; margin: 0 auto; }
+        .option-btn { background: white; border: 2px solid var(--primary); color: var(--primary); padding: 12px 10px; border-radius: 15px; font-size: 20px; font-weight: bold; cursor: pointer; }
         .option-btn:active { background: var(--primary); color: white; transform: scale(0.95); }
 
-        /* 巨大マイクボタン */
-        #mic-wrapper { position: relative; width: 110px; height: 110px; margin: 0 auto; }
-        
-        #mic-btn {
-            width: 100%; height: 100%;
-            border-radius: 50%; background: var(--primary); color: white;
-            border: none; font-size: 50px; cursor: pointer;
-            box-shadow: 0 6px 15px rgba(204,0,0,0.4);
-            position: relative; z-index: 2;
-            transition: transform 0.1s;
-        }
-        #mic-btn:active { transform: scale(0.95); }
+        #mic-wrapper { position: relative; width: 100px; height: 100px; margin: 0 auto; }
+        #mic-btn { width: 100%; height: 100%; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 45px; cursor: pointer; box-shadow: 0 6px 15px rgba(204,0,0,0.4); z-index: 2; }
         #mic-btn.listening { background: #ff4444; animation: pulse 1.5s infinite; }
-        
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); } }
-
-        .mic-label { font-size: 16px; color: #666; font-weight: bold; margin-top: 5px; }
     </style>
 </head>
 <body>
-
     <header>ドコモショップ 受付</header>
     <div id="status-bar">準備完了</div>
-
     <div id="chat-container"></div>
-
     <div id="controls">
         <div id="options">
             <button class="option-btn" onclick="sendText('新規契約したい')">新規契約</button>
             <button class="option-btn" onclick="sendText('機種変更したい')">機種変更</button>
-            <button class="option-btn" onclick="sendText('契約に必要な書類は？')">必要書類</button>
-            <button class="option-btn" onclick="sendText('修理の相談')">故障・修理</button>
+            <button class="option-btn" onclick="sendText('支払い方法を変更したい')">支払変更</button>
+            <button class="option-btn" onclick="sendText('契約内容を相談したい')">内容相談</button>
+            <button class="option-btn" onclick="sendText('修理や故障の相談')">故障修理</button>
+            <button class="option-btn" onclick="sendText('その他、スタッフに相談したい')">その他</button>
         </div>
-
         <div>
-            <div id="mic-wrapper">
-                <button id="mic-btn" onclick="toggleMic()">🎤</button>
-            </div>
-            <div class="mic-label">タップして話す</div>
+            <div id="mic-wrapper"><button id="mic-btn" onclick="toggleMic()">🎤</button></div>
+            <div style="font-size:16px; color:#666; font-weight:bold; margin-top:5px;">タップして話す</div>
         </div>
     </div>
 
     <script type="importmap">
-      {
-        "imports": {
-          "@google/generative-ai": "https://esm.run/@google/generative-ai",
-          "firebase/app": "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js",
-          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
-        }
-      }
+      { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai", "firebase/app": "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js", "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js" } }
     </script>
 
     <script type="module">
@@ -144,226 +55,124 @@
         import { initializeApp } from "firebase/app";
         import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-        // ==========================================
-        // ★設定（このまま使えます）
-        // ==========================================
         const GEMINI_API_KEY = "AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ";
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-            authDomain: "oh-tai.firebaseapp.com",
-            projectId: "oh-tai",
-            storageBucket: "oh-tai.firebasestorage.app",
-            messagingSenderId: "1070284840120",
-            appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-        };
-        // ==========================================
+        const firebaseConfig = { apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak", authDomain: "oh-tai.firebaseapp.com", projectId: "oh-tai", storageBucket: "oh-tai.firebasestorage.app", messagingSenderId: "1070284840120", appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d" };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
-        // ★AIの人格設定（気が利くスタッフ）
         const systemInstruction = `
-            あなたはドコモショップの優秀な受付スタッフ（20代女性）です。
-            お客様の発言を受け止め、会話をスムーズに進めてください。
-            
-            【重要ルール】
-            1. 読み上げの邪魔になる記号（*, ✨, 🎵など）や絵文字は絶対に出力しない。
-            2. 回答は60文字以内で簡潔に。
-            3. 「共感」→「確認」の流れを守る。
-            4. 難しい質問は「担当者に代わります。[STAFF_CALL]」。
+            あなたはドコモショップの受付スタッフ（20代女性）です。
+            仕事は「用件の確認」「書類の有無確認」「待ち時間の案内」です。
 
-            【会話例】
-            客「機種変更したい」
-            AI「ご来店ありがとうございます！機種変更ですね。ご本人確認書類はお持ちでしょうか？」
+            【ルール】
+            1. 挨拶から始める。
+            2. 用件を確認し、次に「本人確認書類（免許証かマイナンバーカード）をお持ちか」を必ず聞く。
+            3. 「支払い変更」や「内容相談」の場合も、まずは書類の有無を確認してください。
+            4. 本人確認書類をお持ちで無い場合、出来る手続きが限られることがあることを柔らかく伝える。
+            5. 「その他」や複雑な内容は「担当者が伺いますので少々お待ちください[STAFF_CALL]」と回答。
+            6. 記号や絵文字は絶対に出力しない。60文字以内で簡潔に。
+            7. 最後は「ただいまご予約のお客様対応中のため、お手続き出来る時間をスタッフからご案内いたします。」で締めくくる。
         `;
 
         let chatSession = model.startChat({
-            history: [{ role: "user", parts: [{ text: "システム指示: " + systemInstruction }] }]
+            history: [{ role: "user", parts: [{ text: "指示: " + systemInstruction }] }]
         });
 
-        // ■ 音声認識の準備
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
-        let autoListenMode = false; // 会話継続モード
+        let autoListenMode = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = "ja-JP";
-            recognition.continuous = false; // 安定性重視で一回切り
-            
-            recognition.onstart = () => {
-                isListening = true;
-                document.getElementById("mic-btn").classList.add("listening");
-                updateStatus("聞いています...", "#ff4444");
-            };
-            
-            recognition.onend = () => {
-                isListening = false;
-                document.getElementById("mic-btn").classList.remove("listening");
-                updateStatus("待機中", "#333");
-            };
-            
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript;
-                if (text.trim()) {
-                    autoListenMode = false; // 認識したら一旦自動モード停止（AI処理待ち）
-                    processInput(text);
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error("マイクエラー:", event.error);
-                autoListenMode = false; // エラー時は停止
-                updateStatus("待機中", "#333");
-            };
-        } else {
-            alert("このブラウザは音声入力非対応です。Chromeをご利用ください。");
+            recognition.onstart = () => { isListening = true; document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "#ff4444"); };
+            recognition.onend = () => { isListening = false; document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#333"); };
+            recognition.onresult = (event) => { const text = event.results[0][0].transcript; if (text.trim()) { autoListenMode = false; processInput(text); } };
+            recognition.onerror = () => { autoListenMode = false; updateStatus("待機中", "#333"); };
         }
 
-        // ■ UI操作
         const statusEl = document.getElementById("status-bar");
         const chatContainer = document.getElementById("chat-container");
 
-        function updateStatus(text, color) {
-            statusEl.innerText = text;
-            statusEl.style.backgroundColor = color;
-        }
+        function updateStatus(text, color) { statusEl.innerText = text; statusEl.style.backgroundColor = color; }
 
-        // 初回ロード時
         window.onload = () => {
-            addBubble("いらっしゃいませ！ご用件をお伺いします。", "ai");
-            // ※初回は自動再生できないため、ユーザーの操作待ち
+            const welcome = "いらっしゃいませ。ご用件をお伺いします。";
+            addBubble(welcome, "ai");
+            setTimeout(() => speak(welcome, false), 1000);
         };
 
-        // マイクボタン
-        window.toggleMic = () => {
-            if(!recognition) return;
-            if(isListening) {
-                recognition.stop();
-                autoListenMode = false;
-            } else {
-                startRec();
-            }
-        };
+        window.toggleMic = () => { if(!recognition) return; if(isListening) { recognition.stop(); autoListenMode = false; } else { startRec(); } };
+        function startRec() { try { recognition.start(); autoListenMode = true; } catch(e) { recognition.stop(); setTimeout(() => recognition.start(), 200); } }
 
-        function startRec() {
-            try {
-                recognition.start();
-                autoListenMode = true;
-            } catch(e) {
-                // 連続起動エラー対策
-                setTimeout(() => { try{ recognition.start(); autoListenMode=true; }catch(ex){} }, 200);
-            }
-        }
+        window.sendText = (text) => processInput(text);
 
-        // ボタン入力
-        window.sendText = (text) => {
-            processInput(text);
-        };
-
-        // ■ メイン処理
         async function processInput(text) {
             addBubble(text, "user");
             updateStatus("AIが考え中...", "#333");
-            
-            // 次のターンも会話を続ける前提にする
             autoListenMode = true;
-
-            // 演出：書類確認
-            if (text.includes("書類") || text.includes("必要")) {
-                updateStatus("確認中...", "#009688");
-                speak("ただいま確認いたします。");
-                await new Promise(r => setTimeout(r, 2000));
-            }
 
             try {
                 const result = await chatSession.sendMessage(text);
                 let response = result.response.text();
 
-                // スタッフ呼び出し判定
+                // カテゴリ判定
+                let type = "その他";
+                if(text.includes("機種変")) type = "機種変更";
+                else if(text.includes("新規")) type = "新規契約";
+                else if(text.includes("修理") || text.includes("故障")) type = "修理";
+                else if(text.includes("支払い") || text.includes("支払")) type = "支払変更";
+                else if(text.includes("内容") || text.includes("相談")) type = "内容相談";
+                
+                await sendToDB(type, text, response.includes("[STAFF_CALL]") ? "要対応" : "待ち");
+
                 if (response.includes("[STAFF_CALL]")) {
                     response = response.replace("[STAFF_CALL]", "");
                     updateStatus("スタッフ呼び出し中", "orange");
-                    sendToDB("スタッフ呼び出し", text, "要対応");
-                    autoListenMode = false; // 会話終了
+                    autoListenMode = false;
                 } else {
                     updateStatus("お話しください", "#009688");
-                    // 簡易分類
-                    let type = "その他";
-                    if(text.includes("機種変")) type = "機種変更";
-                    else if(text.includes("新規")) type = "新規契約";
-                    else if(text.includes("修理")) type = "修理";
-                    else if(text.includes("支払")) type = "料金支払い";
-                    
-                    if(type !== "その他") sendToDB(type, text, "待ち");
                 }
                 
                 addBubble(response, "ai");
-                // 読み上げ開始（終わったらマイクON）
-                speak(response);
-
-            } catch (e) {
-                console.error(e);
-                updateStatus("通信エラー", "red");
-                autoListenMode = false;
-            }
+                speak(response, autoListenMode);
+            } catch (e) { updateStatus("エラー発生", "red"); autoListenMode = false; }
         }
 
-        // ■ Firebase送信
         async function sendToDB(type, detail, status) {
             try {
                 await addDoc(collection(db, "visits"), {
-                    type, memo: detail, status, timestamp: serverTimestamp()
+                    name: "AI受付",
+                    type: type,
+                    memo: detail,
+                    status: status,
+                    timestamp: serverTimestamp()
                 });
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Firebaseエラー:", e); }
         }
 
-        // ■ 吹き出し表示
         function addBubble(text, type) {
             const div = document.createElement("div");
             div.className = `bubble ${type}`;
-            // 表示上の記号削除
-            div.innerText = text.replace(/[*✨👩‍💼]/g, "").replace(/\[.*?\]/g, ""); 
+            div.innerText = text.replace(/[\\*✨👩‍💼]/g, "").replace(/\[.*?\]/g, ""); 
             chatContainer.appendChild(div);
             setTimeout(() => chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' }), 100);
         }
 
-        // ■ 読み上げ & 自動マイクON機能
-        function speak(text) {
+        function speak(text, enableAuto) {
             const synth = window.speechSynthesis;
             synth.cancel();
-
-            // 読み上げ用クリーニング（絵文字・記号・アイコンを削除）
-            const cleanText = text
-                .replace(/[\u{1F600}-\u{1F6FF}]/gu, '') 
-                .replace(/[\u{2700}-\u{27BF}]/gu, '')
-                .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
-                .replace(/[*_~`]/g, '')
-                .replace(/👩‍💼/g, '')
-                .replace(/\[.*?\]/g, '');
-
+            const cleanText = text.replace(/[\\*✨👩‍💼]/g, "").replace(/\[.*?\]/g, "");
             const ut = new SpeechSynthesisUtterance(cleanText);
-            ut.lang = "ja-JP";
-            ut.pitch = 1.3; // 高め（女性風）
-            ut.rate = 1.1;  // 早め
-            
-            // 女性の声を探す
+            ut.lang = "ja-JP"; ut.pitch = 1.3; ut.rate = 1.1;
             const voices = synth.getVoices();
             const female = voices.find(v => v.lang === "ja-JP" && (v.name.includes("Female") || v.name.includes("Google") || v.name.includes("Kyoko")));
             if(female) ut.voice = female;
-
-            // ★読み上げ終了時にマイクをONにする
-            ut.onend = () => {
-                if (autoListenMode && recognition) {
-                    console.log("読み上げ終了 -> マイクON");
-                    startRec();
-                }
-            };
-
+            ut.onend = () => { if (enableAuto && recognition) startRec(); };
             synth.speak(ut);
         }
     </script>
