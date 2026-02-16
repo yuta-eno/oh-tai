@@ -6,20 +6,37 @@
     <title>ドコモショップ AI受付</title>
     <style>
         :root { --primary: #cc0000; --bg: #ffffff; }
-        body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; margin: 0; background: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { 
+            font-family: "Hiragino Kaku Gothic ProN", sans-serif; 
+            margin: 0; 
+            background: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+            /* ★生成したイラストを背景に設定 */
+            background-image: url('https://googleusercontent.com/image_generation_content/5');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
         
-        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 32px; font-weight: bold; border-bottom: 8px solid #a00000; }
-        #status-bar { background: #000; color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 24px; }
+        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 32px; font-weight: bold; border-bottom: 8px solid #a00000; z-index: 10; }
+        #status-bar { background: rgba(0, 0, 0, 0.8); color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 24px; z-index: 10; }
         
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; position: relative; background: #fdfdfd; }
-        .bubble { padding: 30px; border-radius: 25px; max-width: 80%; line-height: 1.4; font-size: 34px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 2; }
-        .ai { background: #f0f0f0; align-self: flex-start; border: 3px solid #ccc; }
-        .user { background: #fff0f0; border: 4px solid var(--primary); align-self: flex-end; color: #cc0000; }
+        /* チャットエリア（背景が見えるように透過） */
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; background: rgba(255, 255, 255, 0.2); }
+        .bubble { padding: 30px; border-radius: 25px; max-width: 75%; line-height: 1.4; font-size: 34px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2; }
+        .ai { background: rgba(240, 240, 240, 0.95); align-self: flex-start; border: 3px solid #ccc; color: #000; }
+        .user { background: rgba(255, 240, 240, 0.95); border: 4px solid var(--primary); align-self: flex-end; color: #cc0000; }
         
-        /* 受付嬢のイラスト */
-        .ai-img { width: 220px; position: absolute; bottom: 10px; left: 10px; opacity: 0.9; z-index: 1; }
-
-        #controls { background: #eee; border-top: 5px solid #ccc; padding: 20px; padding-bottom: 60px; }
+        #controls { 
+            background: rgba(238, 238, 238, 0.9); /* 半透明にして背景を透かす */
+            border-top: 5px solid #ccc; 
+            padding: 20px; 
+            padding-bottom: 60px; 
+            z-index: 10;
+        }
         
         /* 巨大受付ボタン */
         #start-area { display: flex; justify-content: center; align-items: center; height: 100%; }
@@ -39,17 +56,13 @@
         #mic-btn { width: 130px; height: 130px; border-radius: 50%; background: var(--primary); color: white; border: 8px solid #fff; font-size: 70px; cursor: pointer; margin-top: 10px; }
         #mic-btn.listening { background: #008000; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <header>ドコモショップ 受付</header>
     <div id="status-bar">ボタンを押してください</div>
     
-    <div id="chat-container">
-        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgfD18k-t2v2i1mXW5Z4F0-E4Z_zQ9E5vY8L4oDkI_V6X6Q2P7v3Uu4P9q/s800/business_woman_reception.png" class="ai-img" alt="受付スタッフ">
-    </div>
+    <div id="chat-container"></div>
 
     <div id="controls">
         <div id="start-area">
