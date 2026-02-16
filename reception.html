@@ -48,88 +48,99 @@
         const genAI = new GoogleGenerativeAI("AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ");
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
-        // ヒアリング項目を厳格化
         const systemInstruction = `
             あなたはドコモショップの受付です。以下の手順で1つずつ質問してください。
-            1. 挨拶し、名字のみお名前を聞く。
+            1. 挨拶し、名字のみ名前を聞く。
             2. ご用件を聞く。
             3. ご契約者本人か聞く。
             4. 本人確認書類（原本）があるか聞く。
-            5. 全て聞き終えたら必ず「ご対応予定時間をスタッフがお伝えしにまいります。」と言って締める。
-            
-            ※余計なアドバイスは不要。簡潔に。絵文字・記号禁止。
+            5. 最後は必ず「ご対応予定時間をスタッフがお伝えしにまいります。」で締める。
+            ※一言で簡潔に。記号・絵文字禁止。
         `;
 
         let chat = model.startChat({ history: [] });
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = "ja-JP";
-        recognition.onresult = (e) => processInput(e.results[0][0].transcript);
-        recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("お話しください", "green"); };
-        recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
+        const recognition = (SpeechRecognition) ? new SpeechRecognition() : null;
+        if(recognition) {
+            recognition.lang = "ja-JP";
+            recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("どうぞお話しください", "green"); };
+            recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
+            recognition.onresult = (e) => processInput(e.results[0][0].transcript);
+            recognition.onerror = () => { updateStatus("待機中", "#000"); };
+        }
         
         window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
 
         function updateStatus(text, color) { const el = document.getElementById("status-bar"); el.innerText = text; el.style.backgroundColor = color; }
 
         window.onload = () => {
-            const welcome = "いらっしゃいませ。恐れ入りますが、名字のみお名前をお教えいただけますか？";
+            const welcome = "いらっしゃいませ。恐れ入りますが、名字のみお名前を教えていただけますか？";
             addBubble(welcome, "ai");
-            speak(welcome, true); // 最初からマイク自動ON
+            speak(welcome, true);
         };
 
         async function processInput(text) {
+            if(!text.trim()) return;
             addBubble(text, "user");
-            updateStatus("確認中...", "blue");
+            updateStatus("AIが確認中...", "blue");
 
             try {
                 const result = await chat.sendMessage(text);
                 const response = result.response.text();
-                
                 addBubble(response, "ai");
 
-                // 最後の決め台詞が出たら、データを1回だけ飛ばす
                 if (response.includes("スタッフがお伝えしにまいります")) {
+                    updateStatus("送信中...", "orange");
                     await sendFinalDataToDB();
-                    speak(response, false); // 最後はマイクをONにしない
+                    speak(response, false);
                 } else {
-                    speak(response, true); // 会話中は常に喋り終わったらマイクON
+                    speak(response, true);
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                updateStatus("エラー発生。もう一度話してください", "red");
+                setTimeout(() => toggleMic(), 2000);
+            }
         }
 
-        // 会話履歴を解析して1回だけ送信
         async function sendFinalDataToDB() {
             try {
                 const history = await chat.getHistory();
-                // 履歴からユーザーの発言を抽出
-                const userMessages = history.filter(h => h.role === "user").map(h => h.parts[0].text);
+                const conversationText = history.filter(h => h.role === "user").map(h => h.parts[0].text).join(" / ");
                 
-                // AIに内容を要約させてからDBに送る（確実に項目を分けるため）
-                const summaryPrompt = `
-                    以下の会話から情報を抽出してJSONで答えて。
-                    会話: ${userMessages.join(" / ")}
-                    項目: { "name": "名字のみ", "type": "新規/機種変/支払/故障/相談/その他", "memo": "本人か、書類あるか、その他詳細" }
+                // データ抽出プロンプト（JSONミスを防ぐためシンプルに）
+                const extractor = `
+                    以下の会話から情報を抜き出してください。
+                    会話: ${conversationText}
+                    出力形式: 名字, 用件(新規/機種変/支払/故障/相談/その他), 備考(本人か、書類あるか等)
+                    ※余計な文字は一切書かず、カンマ区切り1行だけで出力して。
                 `;
-                const result = await model.generateContent(summaryPrompt);
-                const data = JSON.parse(result.response.text().replace(/```json|```/g, ""));
-
-                await addDoc(collection(db, "visitors"), {
-                    name: data.name + " 様",
+                
+                const result = await model.generateContent(extractor);
+                const rawResult = result.response.text().split(",");
+                
+                const finalData = {
+                    name: (rawResult[0] || "不明").trim() + " 様",
                     table: "AI",
-                    content: data.type,
-                    memo: data.memo,
+                    content: (rawResult[1] || "その他").trim(),
+                    memo: (rawResult[2] || conversationText).trim(),
                     createdAt: serverTimestamp(),
                     timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-                });
-            } catch(e) { console.error("データ送信失敗:", e); }
+                };
+
+                await addDoc(collection(db, "visitors"), finalData);
+                updateStatus("受付完了しました", "#000");
+            } catch(e) {
+                console.error("データ送信失敗:", e);
+                updateStatus("送信失敗（スタッフをお呼びください）", "red");
+            }
         }
 
         function addBubble(t, type) {
             const d = document.createElement("div");
             d.className = "bubble " + type;
-            d.innerText = t.replace(/[*_]/g, '');
+            d.innerText = t.replace(/[\\*\\_]/g, '');
             const c = document.getElementById("chat-container");
             c.appendChild(d);
             c.scrollTo(0, c.scrollHeight);
@@ -137,9 +148,9 @@
 
         function speak(t, autoMic) {
             window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t.replace(/[*_]/g, ''));
+            const u = new SpeechSynthesisUtterance(t.replace(/[\\*\\_]/g, ''));
             u.lang = "ja-JP"; u.pitch = 1.3;
-            u.onend = () => { if(autoMic) toggleMic(); }; // ★喋り終わったらマイク起動
+            u.onend = () => { if(autoMic) toggleMic(); };
             window.speechSynthesis.speak(u);
         }
     </script>
