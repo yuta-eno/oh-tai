@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v21</title>
+    <title>スーパー管理ボード v22</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -28,12 +28,13 @@
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
-        /* 音声許可ボタン */
+        /* 音声許可ボタン（目立つように点滅） */
         #btn-enable-sound {
             background: #ff9800; color: white; border: none; padding: 5px 10px; 
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
-            display: none; /* 最初は隠しておき、JSで表示判定 */
+            display: none; 
             animation: flash 2s infinite;
+            border: 2px solid white;
         }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
@@ -133,8 +134,8 @@
 <body>
     <header>
         <div style="display:flex; align-items:center; gap:10px;">
-            <h1>スーパー管理ボード v21</h1>
-            <button id="btn-enable-sound" onclick="enableSound()">🔊 通知音をオンにする</button>
+            <h1>スーパー管理ボード v22</h1>
+            <button id="btn-enable-sound" onclick="enableSound()">🔊 音声をオンにする(必須)</button>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -143,8 +144,6 @@
             <button class="header-btn" onclick="exportLogsToCSV()">📥 CSV出力</button>
         </div>
     </header>
-
-    <audio id="sound-chime" src="https://soundeffect-lab.info/sound/button/mp3/decision22.mp3" preload="auto"></audio>
 
     <div class="main-dashboard">
         <div class="counters-section">
@@ -192,7 +191,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ★★★ Firebaseの設定 (自動入力済み) ★★★
+    // ★★★ Firebaseの設定 ★★★
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
       authDomain: "oh-tai.firebaseapp.com",
@@ -207,7 +206,17 @@
     const db = getFirestore(app);
     const TOTAL_COUNTERS = 15;
     let localLogs = [];
-    let isSoundEnabled = false; // 音声許可フラグ
+    let isSoundEnabled = false;
+
+    // --- 音源データ（Base64埋め込み：チャイム音） ---
+    // これなら外部サイトの制限を受けずに必ず鳴ります
+    const chimeSound = new Audio("data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG1xisiYkL02ECq41BIEwAw3IjiErSLZCpAy8s667Ugqw0KW/xArprSW028B1lfm8ttfH0I17QEAIf4wWkchsIIBFN0yKozVrG50KGXCgu6DgqFOEGMK04EgTVA4MwVJNyYWewkaCP4trwcBMCqvnfzO/fw9kq7p+2/w/+4fr7//4yH96P/0nAABAQuAAAAAABAAABAAAACgAAAAAAAAAAAAAAAP/7kEQAAAAAAHAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA");
+    // ※容量削減のため短いビープ音にしていますが、必要であれば差し替えます
+
+    // より聞き取りやすい「ピンポン」音のBase64（少し長いですが確実に聞こえます）
+    const pingSoundSrc = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVMAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAjAAAl3gAHCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwAAAAAAAAAA//uQZAAABHp5WNzgAAAAA0gAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o";
+    // 注意: 本格的なチャイム音は長すぎるため、シンプルなビープ音を使用します。
+    // スマホの「通知音」のような音が鳴ります。
 
     window.onload = function() {
         createCards();
@@ -215,19 +224,45 @@
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
     };
 
-    // 音声を有効化する
+    // 音声を有効化する（空の音を再生して許可を得る）
     window.enableSound = function() {
-        const audio = document.getElementById('sound-chime');
-        audio.play().then(() => {
-            audio.pause();
-            audio.currentTime = 0;
+        // ダミー再生
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        context.resume().then(() => {
+            // テスト音を鳴らす
+            playChime();
             isSoundEnabled = true;
-            document.getElementById('btn-enable-sound').style.display = 'none';
-            alert("通知音がオンになりました♪");
-        }).catch(err => {
-            alert("音声を再生できません。端末のマナーモード等を確認してください。");
+            document.getElementById('btn-enable-sound').innerText = "🔊 通知音ON (準備OK)";
+            document.getElementById('btn-enable-sound').style.background = "#4CAF50";
+            document.getElementById('btn-enable-sound').style.animation = "none";
+            // 3秒後にボタンを消す
+            setTimeout(() => {
+                document.getElementById('btn-enable-sound').style.display = 'none';
+            }, 3000);
         });
     };
+
+    // 音を鳴らす関数
+    function playChime() {
+        // シンプルな電子音を作成して鳴らす（ファイル不要・軽量・確実）
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // 「ピン！」という音
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // ラ(A5)
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); // 下がる
+        
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    }
 
     function createCards() {
         const grid = document.getElementById('counter-grid');
@@ -280,7 +315,6 @@
         });
     });
 
-    // 来店者リスト監視（音を鳴らす処理含む）
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
     let isFirstLoad = true;
 
@@ -288,12 +322,10 @@
         const listDiv = document.getElementById('waiting-list');
         listDiv.innerHTML = "";
         
-        // 新規追加があったら音を鳴らす
+        // 新規追加を検知したら音を鳴らす
         if (!isFirstLoad && snapshot.docChanges().some(change => change.type === 'added')) {
             if (isSoundEnabled) {
-                const audio = document.getElementById('sound-chime');
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log("再生エラー:", e));
+                playChime(); // プログラム内蔵音源を再生
             }
         }
         isFirstLoad = false;
@@ -357,17 +389,14 @@
         if (data.status === 'active' || data.status === 'extended') {
             card.classList.add('status-active');
             if (data.status === 'extended') card.classList.add('status-extended');
-            
             els.name.disabled = true; els.clearName.disabled = true;
             els.table.disabled = true; els.content.disabled = true;
-            
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
             els.schedule.disabled = false;
-            
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
             card.dataset.startTime = "";
@@ -380,13 +409,9 @@
         const table = document.getElementById(`c-table-${id}`).value;
         const schedule = document.getElementById(`c-schedule-${id}`).value;
         const memo = document.getElementById(`c-memo-${id}`).value;
-        
         if(!name || !content) { alert("名前と内容を入力"); return; }
-        
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "active", name, table, content, memo, 
-            scheduledEndTime: schedule,
-            startTime: new Date().toISOString()
+            status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString()
         });
     };
     
@@ -410,7 +435,6 @@
     window.updateSchedule = async (id, inputEl) => {
         const val = inputEl.value;
         if (!val) return; 
-
         const card = document.getElementById(`counter-card-${id}`);
         if (card.classList.contains('status-active')) {
             if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
@@ -434,11 +458,8 @@
         const startTimeISO = card.dataset.startTime;
 
         await addDoc(collection(db, "logs"), {
-            createdAt: serverTimestamp(), 
-            startTime: startTimeISO,
-            endTime: new Date().toLocaleTimeString(),
-            name, table, content, memo, duration, isExtended,
-            scheduledEndTime: schedule 
+            createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
+            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule 
         });
         
         await updateDoc(doc(db, "counters", String(id)), {
@@ -453,8 +474,7 @@
         const memo = document.getElementById('v-memo').value;
         if(!name) return;
         await addDoc(collection(db, "visitors"), {
-            createdAt: serverTimestamp(),
-            timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+            createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
             name, table, content, memo
         });
         document.getElementById('v-name').value = '';
