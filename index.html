@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>スーパー管理ボード v20</title>
+    <title>スーパー管理ボード v21</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -27,6 +27,13 @@
         }
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
+        
+        /* 音声許可ボタン */
+        #btn-enable-sound {
+            background: #ff9800; color: white; border: none; padding: 5px 10px; 
+            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
+            display: none; /* 最初は隠しておき、JSで表示判定 */
+        }
         
         .main-dashboard { 
             display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
@@ -70,7 +77,6 @@
             padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
             width: 100%; box-sizing: border-box; 
         }
-        /* 確定済みの時刻入力欄は背景をグレーに */
         input:disabled { background-color: #e0e0e0; color: #555; }
         
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
@@ -124,8 +130,9 @@
 </head>
 <body>
     <header>
-        <div style="display:flex; align-items:center;">
-            <h1>スーパー管理ボード v20</h1>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <h1>スーパー管理ボード v21</h1>
+            <button id="btn-enable-sound" onclick="enableSound()">🔊 通知音をオンにする</button>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
         
@@ -134,6 +141,8 @@
             <button class="header-btn" onclick="exportLogsToCSV()">📥 CSV出力</button>
         </div>
     </header>
+
+    <audio id="sound-chime" src="https://soundeffect-lab.info/sound/button/mp3/decision22.mp3" preload="auto"></audio>
 
     <div class="main-dashboard">
         <div class="counters-section">
@@ -184,13 +193,8 @@
     // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
     
     const firebaseConfig = {
-  apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-  authDomain: "oh-tai.firebaseapp.com",
-  projectId: "oh-tai",
-  storageBucket: "oh-tai.firebasestorage.app",
-  messagingSenderId: "1070284840120",
-  appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
+      // あなたのConfigコードをここに貼ってください
+    };
     
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
@@ -198,9 +202,28 @@
     const db = getFirestore(app);
     const TOTAL_COUNTERS = 15;
     let localLogs = [];
+    let isSoundEnabled = false; // 音声許可フラグ
 
     window.onload = function() {
         createCards();
+        // 音声許可ボタンの表示制御
+        document.getElementById('btn-enable-sound').style.display = 'inline-block';
+    };
+
+    // 音声を有効化する関数
+    window.enableSound = function() {
+        const audio = document.getElementById('sound-chime');
+        // 一瞬だけ無音で再生して、ブラウザに「再生許可」をもらう
+        audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            isSoundEnabled = true;
+            document.getElementById('btn-enable-sound').style.display = 'none'; // ボタンを隠す
+            alert("通知音がオンになりました♪");
+        }).catch(err => {
+            console.error("再生できませんでした", err);
+            alert("音声を再生できませんでした。端末の設定を確認してください。");
+        });
     };
 
     function createCards() {
@@ -209,7 +232,6 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
-            // step="300" で5分刻みに
             div.innerHTML = `
                 <div class="input-group">
                     <label>担当者名</label>
@@ -257,9 +279,24 @@
     });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
+    
+    // 初回読み込み時に大量に鳴るのを防ぐフラグ
+    let isFirstLoad = true;
+
     onSnapshot(qVisitors, (snapshot) => {
         const listDiv = document.getElementById('waiting-list');
         listDiv.innerHTML = "";
+        
+        // 変更があった（追加された）場合のみ音を鳴らす
+        if (!isFirstLoad && snapshot.docChanges().some(change => change.type === 'added')) {
+            if (isSoundEnabled) {
+                const audio = document.getElementById('sound-chime');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("再生エラー(インタラクション未済など):", e));
+            }
+        }
+        isFirstLoad = false;
+
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
             const div = document.createElement('div');
@@ -286,217 +323,8 @@
             const l = docSnap.data();
             localLogs.push(l);
             const tr = document.createElement('tr');
+            
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
-            tbody.appendChild(tr);
-        });
-    });
 
-    // --- UI更新 ---
-    function updateCardUI(id, data) {
-        const card = document.getElementById(`counter-card-${id}`);
-        const els = {
-            name: document.getElementById(`c-name-${id}`),
-            table: document.getElementById(`c-table-${id}`),
-            schedule: document.getElementById(`c-schedule-${id}`),
-            content: document.getElementById(`c-content-${id}`),
-            memo: document.getElementById(`c-memo-${id}`),
-            start: document.getElementById(`btn-start-${id}`),
-            extend: document.getElementById(`btn-extend-${id}`),
-            end: document.getElementById(`btn-end-${id}`),
-            timer: document.getElementById(`timer-${id}`),
-            clearName: document.getElementById(`btn-clear-name-${id}`)
-        };
+            tr.innerHTML = `<td>${startTimeStr}</td>
 
-        if(document.activeElement !== els.name) els.name.value = data.name || "";
-        if(document.activeElement !== els.table) els.table.value = data.table || "";
-        if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
-        if(document.activeElement !== els.content) els.content.value = data.content || "";
-        if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
-
-        // ★★★ ロック制御 ★★★
-        // 終了予定時間がDBに保存されていればロック（入力済みは修正不可）
-        els.schedule.disabled = !!data.scheduledEndTime;
-
-        card.classList.remove('status-active', 'status-extended');
-        if (data.status === 'active' || data.status === 'extended') {
-            card.classList.add('status-active');
-            if (data.status === 'extended') card.classList.add('status-extended');
-            
-            // 稼働中はロック
-            els.name.disabled = true; els.clearName.disabled = true;
-            els.table.disabled = true; els.content.disabled = true;
-            // scheduleのロックは上記の scheduledEndTime チェックで制御
-            
-            els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
-            card.dataset.startTime = data.startTime || "";
-        } else {
-            // 待機中
-            els.name.disabled = false; els.clearName.disabled = false;
-            els.table.disabled = false; els.content.disabled = false;
-            els.schedule.disabled = false;
-            
-            els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
-            els.timer.innerText = "00:00:00";
-            card.dataset.startTime = "";
-        }
-    }
-
-    // --- DB操作 ---
-    window.startService = async (id) => {
-        const name = document.getElementById(`c-name-${id}`).value;
-        const content = document.getElementById(`c-content-${id}`).value;
-        const table = document.getElementById(`c-table-${id}`).value;
-        const schedule = document.getElementById(`c-schedule-${id}`).value;
-        const memo = document.getElementById(`c-memo-${id}`).value;
-        
-        if(!name || !content) { alert("名前と内容を入力"); return; }
-        
-        await updateDoc(doc(db, "counters", String(id)), {
-            status: "active", name, table, content, memo, 
-            scheduledEndTime: schedule,
-            startTime: new Date().toISOString()
-        });
-    };
-    
-    window.clearName = async (id) => {
-        await updateDoc(doc(db, "counters", String(id)), { name: "" });
-    };
-
-    window.toggleExtend = async (id) => {
-        const card = document.getElementById(`counter-card-${id}`);
-        const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
-        await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
-    };
-    
-    window.updateMemo = async (id, text) => {
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            await updateDoc(doc(db, "counters", String(id)), { memo: text });
-        }
-    };
-
-    // ★★★ 終了予定の更新（確認付き） ★★★
-    window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value;
-        if (!val) return; // 空なら何もしない
-
-        const card = document.getElementById(`counter-card-${id}`);
-        // 稼働中のみ更新許可
-        if (card.classList.contains('status-active')) {
-            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
-                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
-            } else {
-                // キャンセルなら入力を戻す（リロードされるのでそのままでもいいが明示的に）
-                inputEl.value = "";
-            }
-        }
-    };
-
-    window.endService = async (id) => {
-        if(!confirm("終了しますか？")) return;
-        const card = document.getElementById(`counter-card-${id}`);
-        const name = document.getElementById(`c-name-${id}`).value;
-        const table = document.getElementById(`c-table-${id}`).value;
-        const schedule = document.getElementById(`c-schedule-${id}`).value;
-        const content = document.getElementById(`c-content-${id}`).value;
-        const memo = document.getElementById(`c-memo-${id}`).value;
-        const duration = document.getElementById(`timer-${id}`).innerText;
-        const isExtended = card.classList.contains('status-extended') ? "あり" : "";
-        const startTimeISO = card.dataset.startTime;
-
-        await addDoc(collection(db, "logs"), {
-            createdAt: serverTimestamp(), 
-            startTime: startTimeISO,
-            endTime: new Date().toLocaleTimeString(),
-            name, table, content, memo, duration, isExtended,
-            scheduledEndTime: schedule 
-        });
-        
-        await updateDoc(doc(db, "counters", String(id)), {
-            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
-        });
-    };
-    
-    window.addVisitorToDb = async () => {
-        const name = document.getElementById('v-name').value;
-        const table = document.getElementById('v-table').value;
-        const content = document.getElementById('v-content').value;
-        const memo = document.getElementById('v-memo').value;
-        if(!name) return;
-        await addDoc(collection(db, "visitors"), {
-            createdAt: serverTimestamp(),
-            timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-            name, table, content, memo
-        });
-        document.getElementById('v-name').value = '';
-        document.getElementById('v-table').value = '';
-        document.getElementById('v-memo').value = '';
-    };
-
-    window.exportLogsToCSV = () => {
-        if (localLogs.length === 0) { alert("データがありません"); return; }
-        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,所要時間,延長\n";
-        localLogs.forEach(l => {
-            const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    window.clearAllLogs = async () => {
-        if(!confirm("【警告】\nログを全削除します。よろしいですか？")) return;
-        const q = query(collection(db, "logs"));
-        const snapshot = await getDocs(q);
-        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(promises);
-        alert("削除しました");
-    }
-
-    setInterval(() => {
-        for (let i = 1; i <= TOTAL_COUNTERS; i++) {
-            const card = document.getElementById(`counter-card-${i}`);
-            const startTimeStr = card.dataset.startTime;
-            if (startTimeStr) {
-                const diff = Date.now() - new Date(startTimeStr).getTime();
-                document.getElementById(`timer-${i}`).innerText = formatDuration(diff);
-            }
-        }
-    }, 1000);
-
-    function formatDuration(ms) {
-        if (ms < 0) ms = 0;
-        const totalSec = Math.floor(ms / 1000);
-        const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-        const s = String(totalSec % 60).padStart(2, '0');
-        return `${h}:${m}:${s}`;
-    }
-
-    window.initFirestoreData = async () => {
-        if(!confirm("データベースを初期化します(初回のみ)")) return;
-        for(let i=1; i<=TOTAL_COUNTERS; i++){
-            await setDoc(doc(db, "counters", String(i)), {
-                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
-            });
-        }
-        alert("完了。リロードしてください。");
-        location.reload();
-    }
-    
-    import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    getDoc(doc(db, "counters", "1")).then(docSnap => {
-        if(!docSnap.exists()) {
-            document.getElementById('setup-btn').style.display = 'inline-block';
-        }
-    });
-
-</script>
-</body>
-</html>
