@@ -9,24 +9,43 @@
         body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; margin: 0; background: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 32px; font-weight: bold; border-bottom: 8px solid #a00000; }
         #status-bar { background: #000; color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 24px; }
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; }
-        .bubble { padding: 30px; border-radius: 20px; max-width: 85%; line-height: 1.4; font-size: 36px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; position: relative; }
+        .bubble { padding: 30px; border-radius: 20px; max-width: 85%; line-height: 1.4; font-size: 36px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2; }
         .ai { background: #f0f0f0; align-self: flex-start; color: #000; border: 3px solid #ccc; }
         .user { background: #fff0f0; border: 4px solid var(--primary); align-self: flex-end; color: #cc0000; }
-        #controls { background: #eee; border-top: 5px solid #ccc; padding: 20px; padding-bottom: 60px; text-align: center; }
-        #mic-btn { width: 140px; height: 140px; border-radius: 50%; background: var(--primary); color: white; border: 8px solid #fff; font-size: 70px; cursor: pointer; }
+        
+        /* AIイラストの配置 */
+        .ai-char { width: 250px; height: auto; position: absolute; bottom: 10px; left: 10px; opacity: 0.8; z-index: 1; }
+
+        #controls { background: #eee; border-top: 5px solid #ccc; padding: 40px 20px 80px 20px; text-align: center; }
+        
+        /* 巨大受付ボタン */
+        #start-btn { 
+            width: 80%; padding: 50px; font-size: 48px; font-weight: bold; 
+            background: var(--primary); color: white; border: none; border-radius: 30px; 
+            box-shadow: 0 10px 0 #a00000; cursor: pointer;
+        }
+        #start-btn:active { transform: translateY(10px); box-shadow: none; }
+
+        /* マイクボタン（会話中のみ表示） */
+        #mic-btn { width: 140px; height: 140px; border-radius: 50%; background: var(--primary); color: white; border: 8px solid #fff; font-size: 70px; display: none; margin: 0 auto; }
         #mic-btn.listening { background: #008000; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .mic-label { font-size: 24px; font-weight: bold; margin-top: 10px; color: #000; }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <header>ドコモショップ 受付</header>
-    <div id="status-bar">準備完了</div>
-    <div id="chat-container"></div>
+    <div id="status-bar">ボタンを押してください</div>
+    
+    <div id="chat-container">
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgfD18k-t2v2i1mXW5Z4F0-E4Z_zQ9E5vY8L4oDkI_V6X6Q2P7v3Uu4P9q/s800/business_woman_reception.png" class="ai-char" alt="AIスタッフ">
+    </div>
+
     <div id="controls">
+        <button id="start-btn" onclick="initChat()">受付をはじめる</button>
         <button id="mic-btn" onclick="toggleMic()">🎤</button>
-        <div class="mic-label">ここを押して受付開始</div>
     </div>
 
     <script type="module">
@@ -49,17 +68,17 @@
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
         const systemInstruction = `
-            あなたはドコモショップの受付です。以下の手順を厳守してください。
-            1. 挨拶し、「ご用件を教えてください」と聞く。
-            2. ご用件を聞いたら、「ご契約者ご本人様でしょうか？」と聞く。
-            3. 本人確認書類（免許証等）の原本があるか聞く。
-            4. 最後に「恐れ入りますが、名字のみお名前を教えていただけますか？」と聞く。
-            5. 名前を聞いたら、復唱や由来の解説は絶対にせず、「ありがとうございます。ご対応予定時間をスタッフがお伝えしにまいります。」で締める。
+            あなたはドコモショップの受付スタッフです。役割は「受付情報の収集」のみです。
+            以下の手順で進めてください。雑談や機種案内は【厳禁】です。
 
-            【絶対ルール】
-            - 雑談（名前の由来、機種の感想など）は1ミリも行わない。
-            - ユーザーが名前を言ったら、即座に終了のセリフへ進む。
-            - 記号・絵文字禁止。60文字以内。
+            1. 挨拶し、「ご用件を教えてください」と聞く。
+            2. 「名字のみお名前を教えていただけますか？」と聞く。
+            3. 「ご契約者ご本人様でしょうか？」と聞く。
+            4. 「本人確認書類（免許証等）の原本はお持ちですか？」と聞く。
+            5. 書類がないと言われた場合、「お手続きの内容によっては、本日の受付が制限される可能性がございます。あらかじめご了承ください」と伝える。
+            6. 最後は必ず「ご対応予定時間をスタッフがお伝えしにまいります。このままお待ちください。」で締める。
+
+            記号・絵文字・アスタリスクは絶対に出さない。60文字以内。
         `;
 
         let chat = model.startChat({ history: [] });
@@ -72,19 +91,19 @@
             recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
             recognition.onresult = (e) => processInput(e.results[0][0].transcript);
         }
-        
-        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
 
-        function updateStatus(text, color) { const el = document.getElementById("status-bar"); el.innerText = text; el.style.backgroundColor = color; }
-
-        window.onload = () => {
-            const welcome = "いらっしゃいませ。ドコモショップへようこそ。本日はどのようなご用件でしょうか？";
+        window.initChat = () => {
+            document.getElementById("start-btn").classList.add("hidden");
+            document.getElementById("mic-btn").classList.remove("hidden");
+            document.getElementById("mic-btn").style.display = "block";
+            const welcome = "いらっしゃいませ。本日はどのようなご用件でしょうか？";
             addBubble(welcome, "ai");
             speak(welcome, true);
         };
 
+        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
+
         async function processInput(text) {
-            if(!text.trim()) return;
             addBubble(text, "user");
             updateStatus("確認中...", "blue");
 
@@ -94,17 +113,12 @@
                 addBubble(response, "ai");
 
                 if (response.includes("スタッフがお伝えしにまいります")) {
-                    updateStatus("送信中...", "orange");
                     await sendFinalDataToDB();
                     speak(response, false);
                 } else {
                     speak(response, true);
                 }
-            } catch (e) {
-                console.error(e);
-                updateStatus("エラー発生。もう一度話してください", "red");
-                setTimeout(() => toggleMic(), 1500);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function sendFinalDataToDB() {
@@ -112,31 +126,26 @@
                 const history = await chat.getHistory();
                 const conversationText = history.filter(h => h.role === "user").map(h => h.parts[0].text).join(" / ");
                 
-                const extractor = `
-                    以下の会話から情報を抜き出してください。
-                    会話: ${conversationText}
-                    出力形式: 名字, 用件(新規/機種変/支払/故障/相談/その他), 備考(本人か、書類あるか、詳細内容)
-                    ※余計な文字は一切書かず、カンマ区切り1行だけで出力。名前が不明なら「お客様」とする。
-                `;
-                
+                // データ抽出
+                const extractor = `会話: ${conversationText} から [名字, 用件, 備考(本人か、書類あるか、詳細)] をカンマ区切りで抽出して。`;
                 const result = await model.generateContent(extractor);
-                const rawResult = result.response.text().split(",");
+                const raw = result.response.text().split(",");
                 
-                const finalData = {
-                    name: (rawResult[0] || "お客様").trim() + " 様",
-                    table: "AI",
-                    content: (rawResult[1] || "その他").trim(),
-                    memo: (rawResult[2] || conversationText).trim(),
+                // 管理ボード(index.html)のセレクトボックス項目に合わせる
+                const validContents = ["新規契約", "機種変更", "故障・修理", "料金相談", "プラン変更", "操作説明", "解約"];
+                let detectedContent = "その他";
+                validContents.forEach(c => { if(conversationText.includes(c.substring(0,2))) detectedContent = c; });
+
+                await addDoc(collection(db, "visitors"), {
+                    name: (raw[0] || "お客様").trim() + " 様",
+                    table: "AI受付",
+                    content: detectedContent,
+                    memo: (raw[2] || conversationText).trim(),
                     createdAt: serverTimestamp(),
                     timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-                };
-
-                await addDoc(collection(db, "visitors"), finalData);
-                updateStatus("受付完了しました", "#000");
-            } catch(e) {
-                console.error("データ送信失敗:", e);
-                updateStatus("送信失敗（スタッフをお呼びください）", "red");
-            }
+                });
+                updateStatus("受付完了", "#000");
+            } catch(e) { console.error(e); }
         }
 
         function addBubble(t, type) {
@@ -155,7 +164,8 @@
             u.onend = () => { if(autoMic) toggleMic(); };
             window.speechSynthesis.speak(u);
         }
+
+        function updateStatus(text, color) { document.getElementById("status-bar").innerText = text; document.getElementById("status-bar").style.backgroundColor = color; }
     </script>
 </body>
 </html>
-
