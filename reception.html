@@ -256,26 +256,26 @@ async function handleAnswer(text) {
         return;
     }
 
-    /* ===== 最終案内 ===== */
-    let finalMsg = "ありがとうございます。";
-    if (userData.hasID.match(/ない|持ってない|未所持/)) {
-        finalMsg += "本人確認書類が無い場合、できる手続きが限られることがございます。";
-    }
-    finalMsg += "現在予約のお客様がいらっしゃるため、スタッフが手続き可能な時間を伝えにまいります。このままお待ちください。";
+    // 最終案内
+let finalMsg = "ありがとうございます。";
+if (userData.hasID.match(/ない|持ってない|未所持/)) {
+    finalMsg += "本人確認書類が無い場合、できる手続きが限られることがございます。";
+}
+finalMsg += "現在予約のお客様がいらっしゃるため、スタッフが手続き可能な時間を伝えにまいります。このままお待ちください。";
 
-    addBubble(finalMsg, "ai");
-    speak(finalMsg, false);
+addBubble(finalMsg, "ai");
+await speak(finalMsg);   // ★ 完全に喋り終わるまで待つ
 
-    await sendToAdmin();
+await sendToAdmin();
 
-    /* 次の受付待機 */
-    setTimeout(() => {
-        addBubble("次の受付を待機します。受付開始ボタンを押してください。", "ai");
-        speak("次の受付を待機します。", false);
-    }, 3000);
+// 5秒待ってから次の受付案内
+await new Promise(r => setTimeout(r, 5000));
 
-    /* 自動リセット */
-    setTimeout(resetReception, 8000);
+addBubble("次の受付を待機します。受付開始ボタンを押してください。", "ai");
+await speak("次の受付を待機します。");
+
+// さらに5秒で初期化
+setTimeout(resetReception, 5000);
 }
 
 /* ===== Firestore送信 ===== */
