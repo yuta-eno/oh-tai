@@ -194,8 +194,13 @@
     // ★★★ ここにFirebaseのコードを貼り付けてください ★★★
     
     const firebaseConfig = {
-      // あなたのConfigコードをここに貼ってください
-    };
+  apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+  authDomain: "oh-tai.firebaseapp.com",
+  projectId: "oh-tai",
+  storageBucket: "oh-tai.firebasestorage.app",
+  messagingSenderId: "1070284840120",
+  appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+};
     
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
@@ -406,3 +411,4 @@
         const card = document.getElementById(`counter-card-${id}`);
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { s
+
