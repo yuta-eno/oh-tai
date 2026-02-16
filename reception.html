@@ -69,7 +69,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 状態管理
+// ===== 状態 =====
 let currentStep = 0;
 let userData = {
     purpose: "",
@@ -79,24 +79,30 @@ let userData = {
     hasID: ""
 };
 
-// 質問（本人連絡は動的に追加）
+// ===== 質問定義 =====
 const baseQuestions = [
     "いらっしゃいませ。本日はどのようなご用件でしょうか？",
     "ありがとうございます。恐れ入りますが、名字のみお名前を教えていただけますか？",
     "ありがとうございます。ご契約者ご本人様でしょうか？"
 ];
-const contactQuestion = "契約者ご本人様にお電話などでご連絡は可能でしょうか？";
+const contactQuestion = "手続きの際、ご契約者ご本人様にお電話などでご連絡は可能でしょうか？";
 const idQuestion = "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？";
 
 let questions = [...baseQuestions, idQuestion];
 
-// 受付開始
+// ===== 本人じゃない判定 =====
+function isNotSubscriber(text) {
+    return /本人じゃない|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(text);
+}
+
+// ===== 受付開始 =====
 window.beginReception = () => {
     document.getElementById("start-btn").style.display = "none";
     document.getElementById("action-area").style.display = "block";
     askNext();
 };
 
+// ===== 質問表示 =====
 function askNext() {
     if (currentStep < questions.length) {
         const q = questions[currentStep];
@@ -105,31 +111,40 @@ function askNext() {
     }
 }
 
-// 音声認識
+// ===== 音声認識 =====
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = "ja-JP";
 recognition.onresult = (e) => handleAnswer(e.results[0][0].transcript);
 recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "green"); };
 recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
-
 window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
 
-// 回答処理
+// ===== 回答処理 =====
 async function handleAnswer(text) {
     addBubble(text, "user");
 
     if (currentStep === 0) userData.purpose = text;
     if (currentStep === 1) userData.name = text;
+
+    // 本人判定
     if (currentStep === 2) {
         userData.isSubscriber = text;
 
-        // 本人でない場合だけ「連絡可能？」を追加
-        if (text.match(/本人ではない|違う|契約者じゃない|家族|代理/)) {
-            questions.splice(3, 0, contactQuestion); // ID確認の前に挿入
+        // 本人でない → 連絡可否質問を必ず挿入
+        if (isNotSubscriber(text)) {
+            questions.splice(3, 0, contactQuestion);
         }
     }
-    if (questions[currentStep] === contactQuestion) userData.canContact = text;
-    if (questions[currentStep] === idQuestion) userData.hasID = text;
+
+    // 契約者連絡可否
+    if (questions[currentStep] === contactQuestion) {
+        userData.canContact = text;
+    }
+
+    // 本人確認書類
+    if (questions[currentStep] === idQuestion) {
+        userData.hasID = text;
+    }
 
     currentStep++;
 
@@ -138,7 +153,7 @@ async function handleAnswer(text) {
         return;
     }
 
-    // 最終案内
+    // ===== 最終案内 =====
     let finalMsg = "ありがとうございます。";
     if (userData.hasID.match(/ない|持ってない|未所持/)) {
         finalMsg += "本人確認書類が無い場合、できる手続きが限られることがございます。";
@@ -151,7 +166,7 @@ async function handleAnswer(text) {
     await sendToAdmin();
 }
 
-// 管理ボード送信
+// ===== Firestore送信 =====
 async function sendToAdmin() {
     updateStatus("管理ボードへ送信中...", "orange");
 
@@ -172,7 +187,7 @@ async function sendToAdmin() {
     }
 }
 
-// UI表示
+// ===== UI =====
 function addBubble(t, type) {
     const d = document.createElement("div");
     d.className = "bubble " + type;
@@ -182,7 +197,7 @@ function addBubble(t, type) {
     c.scrollTo(0, c.scrollHeight);
 }
 
-// 音声
+// ===== 音声読み上げ =====
 function speak(t, auto) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(t);
@@ -193,6 +208,7 @@ function speak(t, auto) {
     window.speechSynthesis.speak(u);
 }
 
+// ===== ステータス表示 =====
 function updateStatus(t, c) {
     document.getElementById("status-bar").innerText = t;
     document.getElementById("status-bar").style.backgroundColor = c;
