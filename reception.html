@@ -23,15 +23,16 @@
         
         #controls { 
             background: rgba(255, 255, 255, 0.9); border-top: 1px solid #ccc; 
-            padding: 20px 20px calc(30px + env(safe-area-inset-bottom)); text-align: center; z-index: 10; 
+            padding: 20px 20px calc(40px + env(safe-area-inset-bottom)); text-align: center; z-index: 10; 
         }
-        #start-btn { width: 90%; padding: 30px; font-size: 36px; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: 50px; cursor: pointer; }
-        #action-area { display: none; }
+        #start-btn { width: 90%; padding: 30px; font-size: 36px; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #a00000; }
+        #start-btn:active { transform: translateY(4px); box-shadow: none; }
         
-        /* スタイリッシュなマイクボタン */
+        #action-area { display: none; }
         #mic-btn { 
-            width: 100px; height: 100px; border-radius: 50%; background: #fff; color: var(--primary); 
-            border: 4px solid var(--primary); font-size: 40px; cursor: pointer; transition: 0.3s;
+            width: 110px; height: 110px; border-radius: 50%; background: #fff; color: var(--primary); 
+            border: 4px solid var(--primary); font-size: 50px; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto;
         }
         #mic-btn.listening { background: var(--primary); color: #fff; transform: scale(1.1); box-shadow: 0 0 20px rgba(204,0,0,0.4); }
     </style>
@@ -44,7 +45,7 @@
         <button id="start-btn" onclick="beginReception()">受付をはじめる</button>
         <div id="action-area">
             <button id="mic-btn" onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
-            <div style="font-size:18px; font-weight:bold; margin-top:10px; color:#555;">タップして話す</div>
+            <div style="font-size:20px; font-weight:bold; margin-top:10px; color:#333;">ここを押してお話しください</div>
         </div>
     </div>
 
@@ -67,24 +68,30 @@
         const genAI = new GoogleGenerativeAI("AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ");
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
-        // AIへの命令を極限までシンプルに
-        const sysPrompt = `あなたは受付機です。
-        【絶対ルール】1回につき以下の質問を1つだけ行い、客の回答を待て。
-        順序：1.用件は？ 2.名字は？ 3.本人か？ 4.書類はあるか？
-        書類がない場合のみ「制限の可能性」を伝え、最後は「スタッフがお伝えしにまいります」で会話を強制終了せよ。
-        雑談・機種提案は一切禁止。`;
+        const sysPrompt = `あなたはドコモショップの受付スタッフです。以下の順序で一問一答を行ってください。
+        【手順】
+        1.「ご用件は何でしょうか？」
+        2.「名字のみお名前を教えてください」
+        3.「ご契約者ご本人様でしょうか？」
+        4.「本人確認書類（免許証かマイナンバーカード）はお持ちですか？」
+        
+        【重要ルール】
+        ・書類が無い場合は「できる手続きが限られること」を伝える。
+        ・最後は「現在予約のお客様がいらっしゃるため、スタッフが手続き可能な時間を伝えにまいります。このままお待ちください。」で会話を終了。
+        ・これ以外のヒアリング、雑談、機種案内は【厳格に禁止】。
+        ・短く可愛らしい丁寧な日本語で回答。60文字以内。`;
 
-        let chat = model.startChat({ history: [{ role: "user", parts: [{ text: "了解。一問一答で受付のみ行う。" }] }] });
+        let chat = model.startChat({ history: [{ role: "user", parts: [{ text: "了解。決められた順序で、一問一答の受付業務のみを遂行します。" }] }] });
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = "ja-JP";
         recognition.onresult = (e) => processInput(e.results[0][0].transcript);
-        recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "green"); };
+        recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("お話しください", "green"); };
         recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
 
         window.beginReception = () => {
             document.getElementById("start-btn").style.display = "none";
             document.getElementById("action-area").style.display = "block";
-            const msg = "いらっしゃいませ。本日はどのようなご用件でしょうか？";
+            const msg = "いらっしゃいませ。ドコモショップ受付です。本日はどのようなご用件でしょうか？";
             addBubble(msg, "ai"); speak(msg, true);
         };
 
@@ -92,13 +99,13 @@
 
         async function processInput(text) {
             addBubble(text, "user");
-            updateStatus("AIが処理中...", "blue");
+            updateStatus("確認中...", "blue");
             try {
                 const result = await chat.sendMessage(text);
                 const response = result.response.text().replace(/[*_]/g, '');
                 addBubble(response, "ai");
                 
-                if (response.includes("スタッフがお伝えしにまいります")) {
+                if (response.includes("スタッフが手続き可能な時間を伝えにまいります")) {
                     await sendDataToAdmin();
                     speak(response, false);
                 } else {
@@ -111,7 +118,8 @@
             try {
                 const history = await chat.getHistory();
                 const userTalk = history.filter(h => h.role === "user").map(h => h.parts[0].text).join(" / ");
-                const res = await model.generateContent(`会話から[名字,用件,備考]を抽出。カンマ区切り1行。指示文は含めるな。会話：${userTalk}`);
+                // AIにデータを抽出させる（指示文を除去し、純粋なデータのみにする）
+                const res = await model.generateContent(`会話：${userTalk}。この会話から[名字,用件,備考(本人か、書類あるか)]を抽出してカンマ区切り1行だけで答えて。`);
                 const raw = res.response.text().split(",");
                 await addDoc(collection(db, "visitors"), {
                     name: (raw[0] || "お客様").trim() + " 様",
@@ -132,8 +140,12 @@
 
         function speak(t, auto) {
             window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; u.pitch = 1.1;
-            u.onend = () => { if(auto) setTimeout(() => toggleMic(), 300); }; window.speechSynthesis.speak(u);
+            const u = new SpeechSynthesisUtterance(t); 
+            u.lang = "ja-JP"; 
+            u.pitch = 1.4; // 声を高くしてかわいらしく
+            u.rate = 1.1;  // 少し明るいテンポ
+            u.onend = () => { if(auto) setTimeout(() => toggleMic(), 300); }; 
+            window.speechSynthesis.speak(u);
         }
 
         function updateStatus(t, c) { document.getElementById("status-bar").innerText = t; document.getElementById("status-bar").style.backgroundColor = c; }
