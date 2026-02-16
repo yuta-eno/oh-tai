@@ -5,163 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ドコモショップ AI受付</title>
     <style>
-        :root { --primary: #cc0000; --bg: #ffffff; }
-        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; margin: 0; padding: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        /* ヘッダーをより大きく、はっきりと */
-        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 32px; font-weight: bold; border-bottom: 5px solid #a00000; }
-        
-        /* 状態表示を見やすく */
-        #status-bar { background: #000; color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 24px; }
-        
-        /* チャットの文字を巨大化 */
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; background: #fefefe; }
-        .bubble { padding: 30px; border-radius: 20px; max-width: 85%; line-height: 1.4; font-size: 36px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .ai { background: #f0f0f0; align-self: flex-start; color: #000; border: 3px solid #ccc; }
-        .user { background: #fff0f0; border: 4px solid var(--primary); align-self: flex-end; color: #cc0000; }
-        
-        /* 操作エリア：ボタンを大きく、押しやすく */
-        #controls { background: #eee; border-top: 5px solid #ccc; padding: 20px; padding-bottom: 40px; }
-        #options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        
-        .option-btn { 
-            background: #fff; border: 4px solid var(--primary); color: var(--primary); 
-            padding: 25px 10px; border-radius: 20px; font-size: 28px; font-weight: bold; 
-            box-shadow: 0 4px 0 var(--primary); 
-        }
-        .option-btn:active { transform: translateY(4px); box-shadow: none; background: var(--primary); color: #fff; }
-
-        /* マイクボタンを強調 */
-        #mic-btn { 
-            width: 140px; height: 140px; border-radius: 50%; background: var(--primary); color: white; 
-            border: 8px solid #fff; font-size: 70px; cursor: pointer; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-        }
-        #mic-btn.listening { background: #008000; animation: pulse 1s infinite; }
+        :root { --primary: #cc0000; }
+        body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; margin: 0; background: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: var(--primary); color: white; padding: 25px; text-align: center; font-size: 36px; font-weight: bold; border-bottom: 8px solid #a00000; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 40px; background: #fdfdfd; }
+        .bubble { padding: 35px; border-radius: 25px; max-width: 85%; font-size: 42px; font-weight: bold; line-height: 1.4; box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+        .ai { background: #f0f0f0; align-self: flex-start; border: 4px solid #bbb; color: #000; }
+        .user { background: #fff0f0; border: 6px solid var(--primary); align-self: flex-end; color: #cc0000; }
+        #controls { background: #eee; padding: 30px; border-top: 8px solid #ccc; padding-bottom: 60px; }
+        #options { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .option-btn { background: #fff; border: 6px solid var(--primary); color: var(--primary); padding: 35px 10px; border-radius: 25px; font-size: 36px; font-weight: bold; box-shadow: 0 6px 0 var(--primary); }
+        .option-btn:active { transform: translateY(6px); box-shadow: none; background: var(--primary); color: #fff; }
+        #mic-btn { width: 160px; height: 160px; border-radius: 50%; background: var(--primary); color: white; border: 10px solid #fff; font-size: 90px; margin-top: 20px; box-shadow: 0 0 25px rgba(0,0,0,0.4); }
+        #mic-btn.listening { background: #00aa00; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .mic-label { font-size: 24px; font-weight: bold; margin-top: 10px; color: #000; }
     </style>
 </head>
 <body>
     <header>ドコモショップ 受付</header>
-    <div id="status-bar">準備完了</div>
     <div id="chat-container"></div>
-    <div id="controls">
+    <div id="controls" style="text-align:center;">
         <div id="options">
             <button class="option-btn" onclick="sendText('新規契約')">新規契約</button>
             <button class="option-btn" onclick="sendText('機種変更')">機種変更</button>
             <button class="option-btn" onclick="sendText('支払い変更')">支払変更</button>
-            <button class="option-btn" onclick="sendText('内容の相談')">相談</button>
             <button class="option-btn" onclick="sendText('故障・修理')">故障修理</button>
-            <button class="option-btn" onclick="sendText('その他')">その他</button>
         </div>
-        <div style="text-align: center;">
-            <button id="mic-btn" onclick="toggleMic()">🎤</button>
-            <div class="mic-label">ここを押して話す</div>
-        </div>
+        <button id="mic-btn" onclick="toggleMic()">🎤</button>
+        <div style="font-size:28px; font-weight:bold; margin-top:10px; color:#333;">ここを押して話す</div>
     </div>
 
-    <script type="importmap">
-      { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai", "firebase/app": "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js", "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js" } }
-    </script>
-
     <script type="module">
-        import { GoogleGenerativeAI } from "@google/generative-ai";
-        import { initializeApp } from "firebase/app";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-        const GEMINI_API_KEY = "AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ";
-        const firebaseConfig = { apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak", authDomain: "oh-tai.firebaseapp.com", projectId: "oh-tai", storageBucket: "oh-tai.firebasestorage.app", messagingSenderId: "1070284840120", appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d" };
+        // ★あなたのFirebase設定 (提供いただいたもの)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+            authDomain: "oh-tai.firebaseapp.com",
+            projectId: "oh-tai",
+            storageBucket: "oh-tai.firebasestorage.app",
+            messagingSenderId: "1070284840120",
+            appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const genAI = new GoogleGenerativeAI("AIzaSyC2nltuDWJ1wSKFnKF4zXN3Y4dtYlTIyxQ");
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 
-        const systemInstruction = "あなたはドコモショップの受付です。簡潔に、丁寧な日本語で、用件の確認と書類の有無だけ聞いてください。絵文字禁止。60文字以内。";
-
-        let chatSession = model.startChat({ history: [{ role: "user", parts: [{ text: "指示: " + systemInstruction }] }] });
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = (SpeechRecognition) ? new SpeechRecognition() : null;
-        if(recognition) {
-            recognition.lang = "ja-JP";
-            recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("どうぞお話しください", "green"); };
-            recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
-            recognition.onresult = (event) => { processInput(event.results[0][0].transcript); };
-        }
-
-        function updateStatus(text, color) { 
-            const el = document.getElementById("status-bar");
-            el.innerText = text; el.style.backgroundColor = color; 
-        }
+        let chat = model.startChat({ history: [] });
 
         window.onload = () => {
-            addBubble("いらっしゃいませ。ご用件をお伺いします。", "ai");
-            setTimeout(() => speak("いらっしゃいませ。ご用件をお伺いします。"), 1000);
+            const welcome = "いらっしゃいませ。ご用件を教えてください。";
+            addBubble(welcome, "ai");
+            speak(welcome);
         };
 
-        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
-        window.sendText = (text) => processInput(text);
-
-        async function processInput(text) {
+        window.sendText = async (text) => {
             if(!text) return;
             addBubble(text, "user");
-            updateStatus("確認中...", "blue");
 
             try {
-                // ★【送信タイミング】AIが答える前に、まずFirebaseに送る
-                await sendToDB(text);
+                // ★index.htmlの「visitors」が待ち構えている形式に完全一致させる
+                await addDoc(collection(db, "visitors"), {
+                    name: "AI受付",
+                    table: "AI端末",
+                    content: text, // 用件
+                    memo: "タブレットからの自動受付",
+                    createdAt: serverTimestamp(),
+                    // index.htmlの表示用時刻形式
+                    timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+                });
 
-                const result = await chatSession.sendMessage(text);
+                // AIの返答生成
+                const prompt = text + "。あなたはドコモの受付です。丁寧な日本語で、本人確認書類の有無を確認する内容を60文字以内で返して。絵文字は絶対に使わないで。";
+                const result = await chat.sendMessage(prompt);
                 const response = result.response.text();
                 
                 addBubble(response, "ai");
                 speak(response);
-            } catch (e) { console.error(e); }
-        }
-
-        // ★管理ボード（index.html）へデータを飛ばす関数
-        async function sendToDB(userInput) {
-            try {
-                // 用件を自動判別
-                let type = "その他";
-                if(userInput.includes("新規")) type = "新規契約";
-                else if(userInput.includes("機種")) type = "機種変更";
-                else if(userInput.includes("支払")) type = "支払変更";
-                else if(userInput.includes("相談")) type = "内容相談";
-                else if(userInput.includes("故障") || userInput.includes("修理")) type = "修理";
-
-                console.log("Firebase送信中...", type);
-
-                // index.html側が読み込んでいる「visits」コレクションに送る
-                await addDoc(collection(db, "visits"), {
-                    name: "AI受付機",
-                    type: type,
-                    memo: userInput,
-                    status: "待ち",
-                    timestamp: serverTimestamp()
-                });
-                console.log("送信成功！");
-            } catch(e) {
-                console.error("Firebase送信失敗:", e);
+            } catch (e) {
+                console.error("送信エラー:", e);
+                alert("通信エラーが発生しました。");
             }
+        };
+
+        // 音声認識
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = (SpeechRecognition) ? new SpeechRecognition() : null;
+        if(recognition) {
+            recognition.lang = "ja-JP";
+            recognition.onresult = (e) => window.sendText(e.results[0][0].transcript);
+            recognition.onstart = () => document.getElementById("mic-btn").classList.add("listening");
+            recognition.onend = () => document.getElementById("mic-btn").classList.remove("listening");
+        }
+        
+        window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
+
+        function addBubble(t, type) {
+            const d = document.createElement("div");
+            d.className = "bubble " + type;
+            // 読み上げの邪魔になる文字を除去して表示
+            d.innerText = t.replace(/[*_]/g, '');
+            const c = document.getElementById("chat-container");
+            c.appendChild(d);
+            c.scrollTo(0, c.scrollHeight);
         }
 
-        function addBubble(text, type) {
-            const div = document.createElement("div");
-            div.className = `bubble ${type}`;
-            div.innerText = text;
-            const container = document.getElementById("chat-container");
-            container.appendChild(div);
-            container.scrollTo(0, container.scrollHeight);
-        }
-
-        function speak(text) {
+        function speak(t) {
             window.speechSynthesis.cancel();
-            const ut = new SpeechSynthesisUtterance(text);
-            ut.lang = "ja-JP"; ut.rate = 1.0;
-            window.speechSynthesis.speak(ut);
+            const u = new SpeechSynthesisUtterance(t.replace(/[*_]/g, ''));
+            u.lang = "ja-JP";
+            u.pitch = 1.3; // 少し高めで聞き取りやすく
+            u.rate = 1.0;
+            window.speechSynthesis.speak(u);
         }
     </script>
 </body>
