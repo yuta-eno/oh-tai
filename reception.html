@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
 :root { --primary: #cc0000; }
 
-/* ===== 全体 ===== */
 body { 
     font-family: "Hiragino Kaku Gothic ProN", sans-serif; 
     margin: 0; 
@@ -20,21 +20,20 @@ body {
     overflow: hidden; 
 }
 
-/* ===== 中央背景画像（準備完了バーと受付ボタンの間） ===== */
+/* ===== 中央背景イラスト ===== */
 body::before {
     content: "";
     position: fixed;
-    top: 140px;      /* ヘッダー + ステータスバー下 */
-    bottom: 220px;   /* 下部受付ボタン領域 */
+    top: 140px;     /* ヘッダー+ステータス */
+    bottom: 220px;  /* 受付ボタン */
     left: 0;
     right: 0;
     background: url('reception1.png') center center / contain no-repeat;
-    opacity: 1.0;
+    opacity: 0.25; /* ← イラストの薄さ調整 */
     pointer-events: none;
     z-index: 0;
 }
 
-/* ===== ヘッダー ===== */
 header { 
     background: var(--primary); 
     color: white; 
@@ -46,7 +45,6 @@ header {
     box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
 }
 
-/* ===== ステータスバー ===== */
 #status-bar { 
     background: rgba(0, 0, 0, 0.75); 
     color: #fff; 
@@ -56,7 +54,7 @@ header {
     z-index: 10; 
 }
 
-/* ===== チャット ===== */
+/* チャット */
 #chat-container { 
     flex: 1; 
     overflow-y: auto; 
@@ -64,9 +62,9 @@ header {
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.2); 
     position: relative;
-    z-index: 1; /* 背景より前 */
+    z-index: 1;
 }
 
 .bubble { 
@@ -78,14 +76,26 @@ header {
     font-weight: bold; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
 }
-.ai { background: rgba(245, 245, 245, 0.95); align-self: flex-start; border: 1px solid #ccc; color: #000; }
-.user { background: rgba(255, 240, 240, 0.95); border: 3px solid var(--primary); align-self: flex-end; color: #cc0000; }
 
-/* ===== 操作エリア ===== */
+.ai { 
+    background: rgba(245, 245, 245, 0.95); 
+    align-self: flex-start; 
+    border: 1px solid #ccc; 
+    color: #000; 
+}
+
+.user { 
+    background: rgba(255, 240, 240, 0.95); 
+    border: 3px solid var(--primary); 
+    align-self: flex-end; 
+    color: #cc0000; 
+}
+
+/* 下部操作 */
 #controls { 
     background: rgba(255, 255, 255, 0.9); 
     border-top: 1px solid #ccc; 
-    padding: 20px 20px calc(60px + env(safe-area-inset-bottom));
+    padding: 20px 20px calc(60px + env(safe-area-inset-bottom)); 
     text-align: center; 
     z-index: 10; 
 }
@@ -148,6 +158,7 @@ header {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+/* ===== Firebase ===== */
 const firebaseConfig = {
     apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
     authDomain: "oh-tai.firebaseapp.com",
@@ -160,7 +171,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ===== 状態 =====
+/* ===== 状態 ===== */
 let currentStep = 0;
 let userData = {
     purpose: "",
@@ -170,7 +181,7 @@ let userData = {
     hasID: ""
 };
 
-// ===== 質問 =====
+/* ===== 質問定義 ===== */
 const baseQuestions = [
     "いらっしゃいませ。本日はどのようなご用件でしょうか？",
     "ありがとうございます。恐れ入りますが、名字のみお名前を教えていただけますか？",
@@ -181,19 +192,19 @@ const idQuestion = "本人確認書類（免許証またはマイナンバーカ
 
 let questions = [...baseQuestions, idQuestion];
 
-// ===== 本人判定 =====
+/* ===== 本人じゃない判定 ===== */
 function isNotSubscriber(text) {
     return /本人じゃない|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(text);
 }
 
-// ===== 受付開始 =====
+/* ===== 受付開始 ===== */
 window.beginReception = () => {
     document.getElementById("start-btn").style.display = "none";
     document.getElementById("action-area").style.display = "block";
     askNext();
 };
 
-// ===== 質問表示 =====
+/* ===== 質問表示 ===== */
 function askNext() {
     if (currentStep < questions.length) {
         const q = questions[currentStep];
@@ -202,15 +213,21 @@ function askNext() {
     }
 }
 
-// ===== 音声認識 =====
+/* ===== 音声認識 ===== */
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = "ja-JP";
 recognition.onresult = (e) => handleAnswer(e.results[0][0].transcript);
-recognition.onstart = () => { document.getElementById("mic-btn").classList.add("listening"); updateStatus("聞いています...", "green"); };
-recognition.onend = () => { document.getElementById("mic-btn").classList.remove("listening"); updateStatus("待機中", "#000"); };
+recognition.onstart = () => { 
+    document.getElementById("mic-btn").classList.add("listening"); 
+    updateStatus("聞いています...", "green"); 
+};
+recognition.onend = () => { 
+    document.getElementById("mic-btn").classList.remove("listening"); 
+    updateStatus("待機中", "#000"); 
+};
 window.toggleMic = () => { try { recognition.start(); } catch(e) { recognition.stop(); } };
 
-// ===== 回答処理 =====
+/* ===== 回答処理 ===== */
 async function handleAnswer(text) {
     addBubble(text, "user");
 
@@ -224,8 +241,13 @@ async function handleAnswer(text) {
         }
     }
 
-    if (questions[currentStep] === contactQuestion) userData.canContact = text;
-    if (questions[currentStep] === idQuestion) userData.hasID = text;
+    if (questions[currentStep] === contactQuestion) {
+        userData.canContact = text;
+    }
+
+    if (questions[currentStep] === idQuestion) {
+        userData.hasID = text;
+    }
 
     currentStep++;
 
@@ -234,6 +256,7 @@ async function handleAnswer(text) {
         return;
     }
 
+    /* ===== 最終案内 ===== */
     let finalMsg = "ありがとうございます。";
     if (userData.hasID.match(/ない|持ってない|未所持/)) {
         finalMsg += "本人確認書類が無い場合、できる手続きが限られることがございます。";
@@ -244,9 +267,18 @@ async function handleAnswer(text) {
     speak(finalMsg, false);
 
     await sendToAdmin();
+
+    /* 次の受付待機 */
+    setTimeout(() => {
+        addBubble("次の受付を待機します。受付開始ボタンを押してください。", "ai");
+        speak("次の受付を待機します。", false);
+    }, 3000);
+
+    /* 自動リセット */
+    setTimeout(resetReception, 8000);
 }
 
-// ===== Firestore送信 =====
+/* ===== Firestore送信 ===== */
 async function sendToAdmin() {
     updateStatus("管理ボードへ送信中...", "orange");
     try {
@@ -265,7 +297,20 @@ async function sendToAdmin() {
     }
 }
 
-// ===== UI =====
+/* ===== 初期化 ===== */
+function resetReception() {
+    currentStep = 0;
+    userData = { purpose:"", name:"", isSubscriber:"", canContact:"", hasID:"" };
+    questions = [...baseQuestions, idQuestion];
+
+    document.getElementById("chat-container").innerHTML = "";
+    document.getElementById("start-btn").style.display = "block";
+    document.getElementById("action-area").style.display = "none";
+
+    updateStatus("準備完了", "#000");
+}
+
+/* ===== UI ===== */
 function addBubble(t, type) {
     const d = document.createElement("div");
     d.className = "bubble " + type;
@@ -275,7 +320,7 @@ function addBubble(t, type) {
     c.scrollTo(0, c.scrollHeight);
 }
 
-// ===== 音声 =====
+/* ===== 音声読み上げ ===== */
 function speak(t, auto) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(t);
@@ -286,7 +331,7 @@ function speak(t, auto) {
     window.speechSynthesis.speak(u);
 }
 
-// ===== ステータス =====
+/* ===== ステータス ===== */
 function updateStatus(t, c) {
     document.getElementById("status-bar").innerText = t;
     document.getElementById("status-bar").style.backgroundColor = c;
