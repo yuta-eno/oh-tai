@@ -244,25 +244,28 @@
 
     // 音を鳴らす関数
     function playChime() {
-        // シンプルな電子音を作成して鳴らす（ファイル不要・軽量・確実）
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.12;
 
-        // 「ピン！」という音
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime); // ラ(A5)
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); // 下がる
-        
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
+    function chord(freqs, start, duration) {
+        freqs.forEach(f => {
+            const osc = ctx.createOscillator();
+            osc.type = "sine";
+            osc.frequency.value = f;
+            osc.connect(gain);
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + duration);
+        });
     }
+
+    // ファミマ風コード進行
+    chord([880, 1320], 0.00, 0.15);
+    chord([660, 990], 0.20, 0.15);
+    chord([880, 1320], 0.40, 0.30);
+}
+
 
     function createCards() {
         const grid = document.getElementById('counter-grid');
@@ -554,6 +557,7 @@ onSnapshot(qVisitors, (snapshot) => {
 </script>
 </body>
 </html>
+
 
 
 
