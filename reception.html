@@ -20,7 +20,7 @@ body{
     overflow:hidden;
 }
 
-/* 背景を動画に設定 */
+/* 背景動画（中央配置） */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -29,12 +29,12 @@ body{
     width: 100%;
     height: 100%;
     object-fit: contain;
-    opacity: 0.9;
+    opacity: 1.0; /* 綺麗に見せるため不透明度をMAXに */
     pointer-events: none;
     z-index: -10;
 }
 
-/* 上部 */
+/* 上部バー */
 header{
     background:var(--primary);
     color:white;
@@ -42,6 +42,7 @@ header{
     text-align:center;
     font-size:24px;
     font-weight:bold;
+    z-index: 10;
 }
 #status-bar{
     background:#000;
@@ -49,47 +50,59 @@ header{
     padding:6px;
     text-align:center;
     font-size:18px;
+    z-index: 10;
 }
 
-/* チャット */
+/* ★字幕コンテナ（画面下部に配置） */
 #chat-container{
-    flex:1;
-    overflow-y:auto;
-    padding:15px 15px 160px;
-    display:flex;
-    flex-direction:column;
-    gap:15px;
-    scroll-behavior:smooth;
+    position: absolute;
+    bottom: 140px; /* 操作パネルの少し上 */
+    left: 0;
+    right: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none; /* 背後の動画操作を邪魔しない */
 }
 
+/* ★字幕風吹き出し */
 .bubble{
-    padding:18px 22px;
-    border-radius:18px;
-    /* ★顔を隠さないよう幅を制限し、自動で折り返し */
-    max-width: 45%; 
-    font-size:26px;
+    padding:20px 30px;
+    border-radius:25px;
+    width: 90%; /* 横幅いっぱいに近く */
+    max-width: 800px;
+    font-size:32px; /* 字幕として見やすく大きく */
     font-weight:bold;
     line-height: 1.4;
-    word-wrap: break-word;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: fadeIn 0.3s ease-out;
 }
-.ai{background:#f5f5f5;border:1px solid #ccc;align-self:flex-start;}
-.user{background:#fff0f0;border:3px solid var(--primary);color:#cc0000;align-self:flex-end;}
 
-/* 下部操作 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ai{ background: rgba(255, 255, 255, 0.9); border: 2px solid #ccc; color: #000; }
+.user{ background: rgba(204, 0, 0, 0.9); border: 2px solid #fff; color: #fff; }
+
+/* 下部操作（固定） */
 #controls{
     position:fixed;
     bottom:0;
     left:0;
     right:0;
-    background:#fff;
-    border-top:2px solid #ccc;
-    padding:8px 10px 10px;
+    background:rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+    border-top:1px solid #ccc;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
     text-align:center;
     z-index:9999;
 }
 
 #start-btn{
-    width:95%;
+    width:90%;
     padding:20px;
     font-size:32px;
     font-weight:bold;
@@ -102,23 +115,24 @@ header{
 #action-area{display:none;}
 
 #mic-btn{
-    width:90px;
-    height:90px;
+    width:80px;
+    height:80px;
     border-radius:50%;
-    border:6px solid var(--primary);
-    font-size:42px;
+    border:4px solid var(--primary);
+    font-size:38px;
     color:var(--primary);
+    background: #fff;
 }
 
 /* 発話指示 */
 #speak-indicator{
-    font-size:24px;
+    font-size:20px;
     font-weight:bold;
     margin-top:5px;
-    color:#777;
+    color:#555;
 }
 #speak-indicator.active{
-    font-size:36px;
+    font-size:24px;
     color:#cc0000;
     animation:blink 1s infinite;
 }
@@ -151,7 +165,7 @@ header{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-/* Firebase */
+/* Firebase設定 */
 const firebaseConfig={
  apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
  authDomain:"oh-tai.firebaseapp.com",
@@ -163,7 +177,7 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* 質問 */
+/* 質問集 */
 const Q1="本日はどのようなご用件でしょうか？";
 const Q2="恐れ入りますが、名字のみお名前を教えてください。";
 const Q3="ご契約者ご本人様でしょうか？";
@@ -172,15 +186,12 @@ const Q5="本人確認書類（免許証またはマイナンバーカード）�
 
 let questions=[Q1,Q2,Q3,Q5];
 let step=0;
-
 let data={purpose:"",name:"",isSub:"",contact:"",id:""};
 
-/* 判定 */
 function isNotSub(t){
  return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
 }
 
-/* DOM */
 const chat=document.getElementById("chat-container");
 const startBtn=document.getElementById("start-btn");
 const action=document.getElementById("action-area");
@@ -188,21 +199,18 @@ const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 
-/* 受付開始 */
 window.beginReception=()=>{
  startBtn.style.display="none";
  action.style.display="block";
  ask();
 };
 
-/* 質問 */
 function ask(){
  const q=questions[step];
  addBubble(q,"ai");
  speak(q,true);
 }
 
-/* 音声認識 */
 const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
@@ -223,7 +231,6 @@ rec.onend=()=>{
 rec.onresult=e=>answer(e.results[0][0].transcript);
 window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
-/* 回答処理 */
 async function answer(t){
  addBubble(t,"user");
  const q=questions[step];
@@ -240,9 +247,8 @@ async function answer(t){
  if(q===Q5) data.id=t;
 
  step++;
- if(step<questions.length){ setTimeout(ask,700); return; }
+ if(step<questions.length){ setTimeout(ask,1000); return; }
 
- /* ===== 最終案内 ===== */
  let msg="ありがとうございます。";
  if(/ない|持ってない|ありません|未所持|いいえ/.test(data.id)){
    msg+="本人確認書類が無い場合、できる手続きが限られることがございます。";
@@ -257,13 +263,10 @@ async function answer(t){
  reset();
 }
 
-/* Firestore送信 */
 async function send(){
  status.innerText="送信中…";
  status.style.background="orange";
-
  const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
-
  await addDoc(collection(db,"visitors"),{
    name:data.name,
    table:"AI受付",
@@ -272,12 +275,10 @@ async function send(){
    createdAt:serverTimestamp(),
    timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
  });
-
  status.innerText="受付完了";
  status.style.background="#000";
 }
 
-/* 初期化 */
 function reset(){
  step=0;
  questions=[Q1,Q2,Q3,Q5];
@@ -287,20 +288,15 @@ function reset(){
  action.style.display="none";
 }
 
-/* チャット */
+/* ★字幕を1つだけ表示（古いものを削除） */
 function addBubble(t,type){
+ chat.innerHTML = ""; // 以前のセリフを消去
  const d=document.createElement("div");
  d.className="bubble "+type;
  d.innerText=t;
  chat.appendChild(d);
- chat.scrollTop=chat.scrollHeight;
 }
 
-/* 強制スクロール */
-new MutationObserver(()=>chat.scrollTop=chat.scrollHeight)
-.observe(chat,{childList:true});
-
-/* 発話中のみ動画再生 */
 function speak(text,auto=false){
  return new Promise(res=>{
   const video = document.getElementById("bg-video");
@@ -311,7 +307,6 @@ function speak(text,auto=false){
   u.pitch=1.4;
 
   u.onstart = () => { video.play().catch(e => console.log("再生失敗:", e)); };
-
   u.onend=()=>{ 
     video.pause();
     if(auto)setTimeout(toggleMic,300); 
