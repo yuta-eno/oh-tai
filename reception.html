@@ -20,7 +20,7 @@ body{
     overflow:hidden;
 }
 
-/* 背景動画（中央配置） */
+/* 背景動画 */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -177,27 +177,12 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ★質問集（textとvoiceの分離パターン） */
-const Q1={
-    text: "本日はどのようなご用件でしょうか？",
-    voice: "ほんじつは、どのような、ごようけんでしょうか？"
-};
-const Q2={
-    text: "恐れ入りますが、名字のみお名前を教えてください。",
-    voice: "おそれいりますが、みょうじのみ、おなまえをおしえてください。"
-};
-const Q3={
-    text: "ご契約者ご本人様でしょうか？",
-    voice: "ごけいやくしゃ、ごほんにんさまでしょうか？"
-};
-const Q4={
-    text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？",
-    voice: "けいやくしゃ、ごほんにんさまへ、おでんわでの、ごれんらくは、かのうでしょうか？"
-};
-const Q5={
-    text: "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？",
-    voice: "ほんにんかくにんしょるい。めんきょしょう、または、マイナンバーカードはおもちでしょうか？"
-};
+/* 質問集 */
+const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
+const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
+const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
+const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
+const Q5={ text: "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？", file: "q5.mp3" };
 
 let questions=[Q1,Q2,Q3,Q5];
 let step=0;
@@ -222,8 +207,8 @@ window.beginReception=()=>{
 
 function ask(){
  const q=questions[step];
- addBubble(q.text,"ai"); // 画面にはtextを表示
- speak(q.voice,true);   // 音声はvoiceを再生
+ addBubble(q.text,"ai");
+ speak(q.file,true);
 }
 
 const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
@@ -246,6 +231,7 @@ rec.onend=()=>{
 rec.onresult=e=>answer(e.results[0][0].transcript);
 window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
+/* ★回答処理（3分割音声の連続再生に対応） */
 async function answer(t){
  addBubble(t,"user");
  const q=questions[step];
@@ -264,18 +250,23 @@ async function answer(t){
  step++;
  if(step<questions.length){ setTimeout(ask,1000); return; }
 
- /* ★最終案内（textとvoiceの分離） */
+ /* ===== 最終案内（3つのファイルを繋いで再生） ===== */
  let msgText="ありがとうございます。";
- let msgVoice="ありがとうございます。";
- if(/ない|持ってない|ありません|未所持|いいえ/.test(data.id)){
+ const hasNoId = /ない|持ってない|ありません|未所持|いいえ/.test(data.id);
+ 
+ if(hasNoId){
    msgText+="本人確認書類が無い場合、できる手続きが限られることがございます。";
-   msgVoice+="ほんにんかくにんしょるいが、ないばあい。できるてつづきが、かぎられることがございます。";
  }
  msgText+="スタッフがお手続き可能なお時間をお伝えしに参ります。しばらくお待ちください。";
- msgVoice+="スタッフが、おてつづき、かのうな、おじかんを、おつたえしにまいります。しばらく、おまちください。";
 
  addBubble(msgText,"ai");
- await speak(msgVoice);
+
+ // 音声を順番に再生
+ await speak("finish_start.mp3");
+ if(hasNoId) {
+   await speak("warning_id.mp3");
+ }
+ await speak("finish_end.mp3");
 
  await send();
  await new Promise(r=>setTimeout(r,3000));
@@ -315,26 +306,23 @@ function addBubble(t,type){
  chat.appendChild(d);
 }
 
-function speak(text,auto=false){
+/* 音声再生（動画連動） */
+function speak(fileName,auto=false){
  return new Promise(res=>{
   const video = document.getElementById("bg-video");
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang="ja-JP";
-  u.rate=1.1;
-  u.pitch=1.4;
+  const audio = new Audio(fileName);
 
-  u.onstart = () => { video.play().catch(e => console.log("再生失敗:", e)); };
-  u.onend=()=>{ 
+  audio.onplay = () => { video.play().catch(e => console.log("再生失敗:", e)); };
+  audio.onended = () => { 
     video.pause();
     if(auto)setTimeout(toggleMic,300); 
     res(); 
   };
-  speechSynthesis.speak(u);
+  
+  audio.play().catch(e => { console.error("音声再生エラー:", e); res(); });
  });
 }
 </script>
 
 </body>
 </html>
-
