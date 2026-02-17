@@ -20,7 +20,7 @@ body{
     overflow:hidden;
 }
 
-/* ===== 背景 完全最背面・タップ無効 ===== */
+/* 背景 */
 body::before{
     content:"";
     position:fixed;
@@ -31,7 +31,7 @@ body::before{
     z-index:-10;
 }
 
-/* ===== 上部 ===== */
+/* 上部 */
 header{
     background:var(--primary);
     color:white;
@@ -39,7 +39,6 @@ header{
     text-align:center;
     font-size:24px;
     font-weight:bold;
-    z-index:10;
 }
 #status-bar{
     background:#000;
@@ -47,19 +46,17 @@ header{
     padding:6px;
     text-align:center;
     font-size:18px;
-    z-index:10;
 }
 
-/* ===== チャット ===== */
+/* チャット */
 #chat-container{
     flex:1;
     overflow-y:auto;
-    padding:15px;
+    padding:15px 15px 160px; /* ← 下に余白追加（マイク隠れ防止） */
     display:flex;
     flex-direction:column;
     gap:15px;
     scroll-behavior:smooth;
-    z-index:5;
 }
 
 .bubble{
@@ -72,7 +69,7 @@ header{
 .ai{background:#f5f5f5;border:1px solid #ccc;align-self:flex-start;}
 .user{background:#fff0f0;border:3px solid var(--primary);color:#cc0000;align-self:flex-end;}
 
-/* ===== 下部操作 ===== */
+/* 下部操作（高さ縮小） */
 #controls{
     position:fixed;
     bottom:0;
@@ -80,43 +77,42 @@ header{
     right:0;
     background:#fff;
     border-top:2px solid #ccc;
-    padding:15px 10px 20px;
+    padding:8px 10px 10px; /* ← 縮小 */
     text-align:center;
-    z-index:9999; /* ←最前面 */
+    z-index:9999;
 }
 
 #start-btn{
     width:95%;
-    padding:28px;
-    font-size:36px;
+    padding:20px; /* ← 縮小 */
+    font-size:32px;
     font-weight:bold;
     background:var(--primary);
     color:white;
     border:none;
     border-radius:50px;
-    cursor:pointer;
 }
 
 #action-area{display:none;}
 
 #mic-btn{
-    width:110px;
-    height:110px;
+    width:90px;   /* ← 縮小 */
+    height:90px;
     border-radius:50%;
     border:6px solid var(--primary);
-    font-size:50px;
+    font-size:42px;
     color:var(--primary);
 }
 
-/* ===== 発話指示 ===== */
+/* 発話指示 */
 #speak-indicator{
-    font-size:28px;
+    font-size:24px; /* ← 縮小 */
     font-weight:bold;
-    margin-top:10px;
+    margin-top:5px;
     color:#777;
 }
 #speak-indicator.active{
-    font-size:46px;
+    font-size:36px;
     color:#cc0000;
     animation:blink 1s infinite;
 }
@@ -238,17 +234,22 @@ async function answer(t){
  step++;
  if(step<questions.length){ setTimeout(ask,700); return; }
 
- let msg="ありがとうございます。スタッフがまいりますのでお待ちください。";
+ /* ===== 最終案内（本人確認書類チェック追加） ===== */
+ let msg="ありがとうございます。";
+ if(/ない|持ってない|ありません|未所持|いいえ/.test(data.id)){
+   msg+="本人確認書類が無い場合、できる手続きが限られることがございます。";
+ }
+ msg+="スタッフがお手続き可能なお時間をお伝えしに参ります。しばらくお待ちください。";
+
  addBubble(msg,"ai");
  await speak(msg);
 
  await send();
-
  await new Promise(r=>setTimeout(r,3000));
  reset();
 }
 
-/* Firestore送信（1行備考） */
+/* Firestore送信 */
 async function send(){
  status.innerText="送信中…";
  status.style.background="orange";
@@ -256,7 +257,7 @@ async function send(){
  const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
 
  await addDoc(collection(db,"visitors"),{
-   name:data.name,
+   name:data.name+" 様",
    table:"AI受付",
    content:data.purpose,
    memo:memo,
@@ -278,7 +279,7 @@ function reset(){
  action.style.display="none";
 }
 
-/* チャット追加 */
+/* チャット */
 function addBubble(t,type){
  const d=document.createElement("div");
  d.className="bubble "+type;
@@ -287,7 +288,7 @@ function addBubble(t,type){
  chat.scrollTop=chat.scrollHeight;
 }
 
-/* 監視スクロール */
+/* 強制スクロール */
 new MutationObserver(()=>chat.scrollTop=chat.scrollHeight)
 .observe(chat,{childList:true});
 
