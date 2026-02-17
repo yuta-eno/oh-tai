@@ -20,7 +20,7 @@ body{
     overflow:hidden;
 }
 
-/* 背景動画（中央配置） */
+/* 背景動画 */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -34,7 +34,6 @@ body{
     z-index: -10;
 }
 
-/* 上部バー */
 header{
     background:var(--primary);
     color:white;
@@ -53,7 +52,6 @@ header{
     z-index: 10;
 }
 
-/* 字幕コンテナ */
 #chat-container{
     position: absolute;
     bottom: 140px;
@@ -86,7 +84,6 @@ header{
 .ai{ background: rgba(255, 255, 255, 0.9); border: 2px solid #ccc; color: #000; }
 .user{ background: rgba(204, 0, 0, 0.9); border: 2px solid #fff; color: #fff; }
 
-/* 下部操作 */
 #controls{
     position:fixed;
     bottom:0;
@@ -174,6 +171,7 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
+/* ファイル名設定 */
 const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
 const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
 const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
@@ -195,20 +193,11 @@ const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 
-/* ★修正：受付開始時に音声をアンロックする */
+/* ★修正：ダミー再生をやめ、クリックイベント内で直接質問を開始する */
 window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
-    
-    // ブラウザの再生制限を解除するためのダミー再生
-    const dummyAudio = new Audio();
-    dummyAudio.play().then(() => {
-        dummyAudio.pause();
-        ask(); // アンロック後に質問を開始
-    }).catch(e => {
-        console.error("Audio unlock failed:", e);
-        ask(); // 失敗しても強行
-    });
+    ask(); // ここで同期的に呼ばれるspeak内のplay()が許可されるはずです
 };
 
 function ask(){
@@ -254,11 +243,11 @@ async function answer(t){
 
     step++;
     if(step<questions.length){ 
-        // 前のセリフが消えるのを防ぐため、少し間を置いてから次を聞く
         setTimeout(ask, 1000); 
         return; 
     }
 
+    /* 最終案内 */
     let msgText="ありがとうございます。";
     const hasNoId = /ない|持ってない|ありません|未所持|いいえ/.test(data.id);
     if(hasNoId) msgText += "本人確認書類が無い場合、できる手続きが限られることがございます。";
@@ -266,7 +255,6 @@ async function answer(t){
 
     addBubble(msgText,"ai");
 
-    // 最終案内を順番に再生
     await speak("finish_start.mp3");
     if(hasNoId) await speak("warning_id.mp3");
     await speak("finish_end.mp3");
@@ -309,41 +297,38 @@ function addBubble(t,type){
     chat.appendChild(d);
 }
 
-/* ★修正：音声再生と動画連動をより確実に制御 */
+/* ★修正：音声再生ロジックをシンプルかつ堅牢に */
 function speak(fileName, auto=false){
     return new Promise(res=>{
         const video = document.getElementById("bg-video");
         const audio = new Audio(fileName);
 
-        // 音声が読み込まれたら再生
-        audio.oncanplaythrough = () => {
-            audio.play().catch(e => {
-                console.error("Audio play failed:", e);
-                res();
-            });
-        };
-
-        // 再生開始時に動画を動かす
-        audio.onplay = () => {
-            video.play().catch(e => console.log("Video play failed:", e));
-        };
-
-        // 音声終了時に動画を止める
+        // 音声開始で動画再生
+        audio.onplay = () => video.play().catch(e => console.log("Video error:", e));
+        
+        // 音声終了で動画停止＆マイク起動（autoの場合）
         audio.onended = () => {
             video.pause();
             if(auto) setTimeout(toggleMic, 300);
             res();
         };
 
-        // エラーハンドリング（ファイルがない場合など）
-        audio.onerror = () => {
-            console.error("Audio load error:", fileName);
-            res();
+        // ★エラー時はアラートを出し、マイクには移行しない（原因究明のため）
+        audio.onerror = (e) => {
+            alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
+            console.error("Audio Load Error:", e);
+            res(); // プログラム自体は止めないがマイクは起動しない
         };
+
+        // 再生実行
+        audio.play().catch(e => {
+            alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
+            console.error(e);
+            res();
+        });
     });
 }
 </script>
 
 </body>
 </html>
-
