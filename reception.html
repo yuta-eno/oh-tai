@@ -20,6 +20,7 @@ body{
     overflow:hidden;
 }
 
+/* 背景動画（中央配置） */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -33,6 +34,7 @@ body{
     z-index: -10;
 }
 
+/* 上部バー */
 header{
     background:var(--primary);
     color:white;
@@ -51,6 +53,7 @@ header{
     z-index: 10;
 }
 
+/* 字幕コンテナ */
 #chat-container{
     position: absolute;
     bottom: 140px;
@@ -83,6 +86,7 @@ header{
 .ai{ background: rgba(255, 255, 255, 0.9); border: 2px solid #ccc; color: #000; }
 .user{ background: rgba(204, 0, 0, 0.9); border: 2px solid #fff; color: #fff; }
 
+/* 下部操作 */
 #controls{
     position:fixed;
     bottom:0;
@@ -170,12 +174,11 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ★質問と音声ファイルの定義 */
-const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" }; //
-const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" }; //
-const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" }; //
-const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" }; //
-const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" }; //
+const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
+const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
+const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
+const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
+const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
 
 let questions=[Q1,Q2,Q3,Q5];
 let step=0;
@@ -192,136 +195,155 @@ const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 
-/* ★受付開始：最初のクリックで音声を「アンロック」する */
+/* ★修正：受付開始時に音声をアンロックする */
 window.beginReception=()=>{
- startBtn.style.display="none";
- action.style.display="block";
- 
- // ダミー再生でブラウザの制限を解除
- const unlockAudio = new Audio();
- unlockAudio.play().then(() => {
-     unlockAudio.pause();
-     ask(); 
- }).catch(e => {
-     console.log("Audio unlock failed, proceeding anyway", e);
-     ask();
- });
+    startBtn.style.display="none";
+    action.style.display="block";
+    
+    // ブラウザの再生制限を解除するためのダミー再生
+    const dummyAudio = new Audio();
+    dummyAudio.play().then(() => {
+        dummyAudio.pause();
+        ask(); // アンロック後に質問を開始
+    }).catch(e => {
+        console.error("Audio unlock failed:", e);
+        ask(); // 失敗しても強行
+    });
 };
 
 function ask(){
- const q=questions[step];
- addBubble(q.text,"ai");
- speak(q.file,true);
+    const q=questions[step];
+    addBubble(q.text,"ai");
+    speak(q.file,true);
 }
 
 const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
 rec.onstart=()=>{
- micBtn.classList.add("listening");
- speakIndicator.classList.add("active");
- status.innerText="聞いています…";
- status.style.background="green";
+    micBtn.classList.add("listening");
+    speakIndicator.classList.add("active");
+    status.innerText="聞いています…";
+    status.style.background="green";
 };
 
 rec.onend=()=>{
- micBtn.classList.remove("listening");
- speakIndicator.classList.remove("active");
- status.innerText="待機中";
- status.style.background="#000";
+    micBtn.classList.remove("listening");
+    speakIndicator.classList.remove("active");
+    status.innerText="待機中";
+    status.style.background="#000";
 };
 
 rec.onresult=e=>answer(e.results[0][0].transcript);
 window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
 async function answer(t){
- addBubble(t,"user");
- const q=questions[step];
+    addBubble(t,"user");
+    const q=questions[step];
 
- if(q===Q1) data.purpose=t;
- if(q===Q2) data.name=t;
- if(q===Q3){
-   data.isSub=t;
-   if(isNotSub(t)){
-     questions.splice(step+1,0,Q4);
-   }
- }
- if(q===Q4) data.contact=t;
- if(q===Q5) data.id=t;
+    if(q===Q1) data.purpose=t;
+    if(q===Q2) data.name=t;
+    if(q===Q3){
+        data.isSub=t;
+        if(isNotSub(t)){
+            questions.splice(step+1,0,Q4);
+        }
+    }
+    if(q===Q4) data.contact=t;
+    if(q===Q5) data.id=t;
 
- step++;
- if(step<questions.length){ setTimeout(ask,1000); return; }
+    step++;
+    if(step<questions.length){ 
+        // 前のセリフが消えるのを防ぐため、少し間を置いてから次を聞く
+        setTimeout(ask, 1000); 
+        return; 
+    }
 
- /* ===== ★最終案内：分割された3ファイルを順に再生 ===== */
- let msgText="ありがとうございます。";
- const hasNoId = /ない|持ってない|ありません|未所持|いいえ/.test(data.id);
- if(hasNoId) msgText += "本人確認書類が無い場合、できる手続きが限られることがございます。";
- msgText += "スタッフがお手続き可能なお時間をお伝えしに参ります。しばらくお待ちください。";
+    let msgText="ありがとうございます。";
+    const hasNoId = /ない|持ってない|ありません|未所持|いいえ/.test(data.id);
+    if(hasNoId) msgText += "本人確認書類が無い場合、できる手続きが限られることがございます。";
+    msgText += "スタッフがお手続き可能なお時間をお伝えしに参ります。しばらくお待ちください。";
 
- addBubble(msgText,"ai");
+    addBubble(msgText,"ai");
 
- await speak("finish_start.mp3"); //
- if(hasNoId) await speak("warning_id.mp3"); //
- await speak("finish_end.mp3"); //
+    // 最終案内を順番に再生
+    await speak("finish_start.mp3");
+    if(hasNoId) await speak("warning_id.mp3");
+    await speak("finish_end.mp3");
 
- await send();
- await new Promise(r=>setTimeout(r,3000));
- reset();
+    await send();
+    await new Promise(r=>setTimeout(r,3000));
+    reset();
 }
 
 async function send(){
- status.innerText="送信中…";
- status.style.background="orange";
- const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
- await addDoc(collection(db,"visitors"),{
-   name:data.name,
-   table:"AI受付",
-   content:data.purpose,
-   memo:memo,
-   createdAt:serverTimestamp(),
-   timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
- });
- status.innerText="受付完了";
- status.style.background="#000";
+    status.innerText="送信中…";
+    status.style.background="orange";
+    const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    await addDoc(collection(db,"visitors"),{
+        name:data.name,
+        table:"AI受付",
+        content:data.purpose,
+        memo:memo,
+        createdAt:serverTimestamp(),
+        timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+    });
+    status.innerText="受付完了";
+    status.style.background="#000";
 }
 
 function reset(){
- step=0;
- questions=[Q1,Q2,Q3,Q5];
- data={purpose:"",name:"",isSub:"",contact:"",id:""};
- chat.innerHTML="";
- startBtn.style.display="block";
- action.style.display="none";
+    step=0;
+    questions=[Q1,Q2,Q3,Q5];
+    data={purpose:"",name:"",isSub:"",contact:"",id:""};
+    chat.innerHTML="";
+    startBtn.style.display="block";
+    action.style.display="none";
 }
 
 function addBubble(t,type){
- chat.innerHTML = ""; 
- const d=document.createElement("div");
- d.className="bubble "+type;
- d.innerText=t;
- chat.appendChild(d);
+    chat.innerHTML = ""; 
+    const d=document.createElement("div");
+    d.className="bubble "+type;
+    d.innerText=t;
+    chat.appendChild(d);
 }
 
-/* ★音声再生と動画連動のコアロジック */
-function speak(fileName,auto=false){
- return new Promise(res=>{
-  const video = document.getElementById("bg-video");
-  const audio = new Audio(fileName);
+/* ★修正：音声再生と動画連動をより確実に制御 */
+function speak(fileName, auto=false){
+    return new Promise(res=>{
+        const video = document.getElementById("bg-video");
+        const audio = new Audio(fileName);
 
-  audio.onplay = () => { video.play().catch(e => console.log("Video play failed:", e)); };
-  audio.onended = () => { 
-    video.pause();
-    if(auto)setTimeout(toggleMic,300); 
-    res(); 
-  };
-  
-  audio.play().catch(e => { 
-      console.error("Audio play error:", fileName, e); 
-      res(); 
-  });
- });
+        // 音声が読み込まれたら再生
+        audio.oncanplaythrough = () => {
+            audio.play().catch(e => {
+                console.error("Audio play failed:", e);
+                res();
+            });
+        };
+
+        // 再生開始時に動画を動かす
+        audio.onplay = () => {
+            video.play().catch(e => console.log("Video play failed:", e));
+        };
+
+        // 音声終了時に動画を止める
+        audio.onended = () => {
+            video.pause();
+            if(auto) setTimeout(toggleMic, 300);
+            res();
+        };
+
+        // エラーハンドリング（ファイルがない場合など）
+        audio.onerror = () => {
+            console.error("Audio load error:", fileName);
+            res();
+        };
+    });
 }
 </script>
 
 </body>
 </html>
+
