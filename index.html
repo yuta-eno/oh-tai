@@ -208,15 +208,48 @@
     let localLogs = [];
     let isSoundEnabled = false;
 
-    // --- 音源データ（Base64埋め込み：チャイム音） ---
-    // これなら外部サイトの制限を受けずに必ず鳴ります
-    const chimeSound = new Audio("data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG1xisiYkL02ECq41BIEwAw3IjiErSLZCpAy8s667Ugqw0KW/xArprSW028B1lfm8ttfH0I17QEAIf4wWkchsIIBFN0yKozVrG50KGXCgu6DgqFOEGMK04EgTVA4MwVJNyYWewkaCP4trwcBMCqvnfzO/fw9kq7p+2/w/+4fr7//4yH96P/0nAABAQuAAAAAABAAABAAAACgAAAAAAAAAAAAAAAP/7kEQAAAAAAHAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA//uQRAAAAAAABAAAAEAAAAAAQAAEAICAAAAAAABAAABAAIAAAAABAAAAQAAAAAAAAAAAAAA");
-    // ※容量削減のため短いビープ音にしていますが、必要であれば差し替えます
+    // --- 音声処理（AudioContextを使ったシンセサイズ） ---
+    // これにより外部ファイルの読み込みエラーや再生制限を回避します
+    let audioCtx = null;
 
-    // より聞き取りやすい「ピンポン」音のBase64（少し長いですが確実に聞こえます）
-    const pingSoundSrc = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVMAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAjAAAl3gAHCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwAAAAAAAAAA//uQZAAABHp5WNzgAAAAA0gAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o//uQZAAABAAA0gAAAANAAAAATEAMEEAACOqAAABDAEAAH3/8wO6B7o";
-    // 注意: 本格的なチャイム音は長すぎるため、シンプルなビープ音を使用します。
-    // スマホの「通知音」のような音が鳴ります。
+    window.playFamima = function() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        // コンテキストがサスペンド状態なら再開を試みる
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        const t = audioCtx.currentTime;
+        const gainNode = audioCtx.createGain();
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.value = 0.1; // 音量調整
+
+        // ファミマ入店音のメロディ定義 (音階: F#5, D5, A4, D5, E5, A5)
+        // 周波数(Hz): 740, 587, 440, 587, 659, 880
+        const notes = [
+            { f: 740, t: 0.00, d: 0.25 }, // F#5
+            { f: 587, t: 0.25, d: 0.25 }, // D5
+            { f: 440, t: 0.50, d: 0.25 }, // A4
+            { f: 587, t: 0.75, d: 0.25 }, // D5
+            { f: 659, t: 1.00, d: 0.25 }, // E5
+            { f: 880, t: 1.25, d: 0.60 }  // A5 (最後は少し長く)
+        ];
+
+        notes.forEach(note => {
+            const osc = audioCtx.createOscillator();
+            osc.type = "sine"; // 正弦波（柔らかい音）
+            osc.frequency.setValueAtTime(note.f, t + note.t);
+            osc.connect(gainNode);
+            osc.start(t + note.t);
+            osc.stop(t + note.t + note.d);
+            
+            // 音の減衰エンベロープ（プッといきなり切れないように）
+            gainNode.gain.setValueAtTime(0.1, t + note.t);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
+        });
+    }
 
     window.onload = function() {
         createCards();
@@ -224,51 +257,28 @@
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
     };
 
-    // 音声を有効化する（空の音を再生して許可を得る）
+    // 音声を有効化するボタン処理
     window.enableSound = function() {
-        // ダミー再生
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        context.resume().then(() => {
+        // AudioContextを初期化または再開（ユーザー操作必須）
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        audioCtx.resume().then(() => {
             // テスト音を鳴らす
-            playChime();
+            window.playFamima();
             isSoundEnabled = true;
-            document.getElementById('btn-enable-sound').innerText = "🔊 通知音ON (準備OK)";
-            document.getElementById('btn-enable-sound').style.background = "#4CAF50";
-            document.getElementById('btn-enable-sound').style.animation = "none";
+            
+            const btn = document.getElementById('btn-enable-sound');
+            btn.innerText = "🔊 通知音ON (準備OK)";
+            btn.style.background = "#4CAF50";
+            btn.style.animation = "none";
+            
             // 3秒後にボタンを消す
             setTimeout(() => {
-                document.getElementById('btn-enable-sound').style.display = 'none';
+                btn.style.display = 'none';
             }, 3000);
         });
     };
-
-    // 音を鳴らす関数
-    function playFamimaLikeChime() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    gain.gain.value = 0.15;
-
-    function playTone(freq, start, duration) {
-        const osc = ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, start);
-        osc.connect(gain);
-        osc.start(start);
-        osc.stop(start + duration);
-    }
-
-    const t = ctx.currentTime;
-
-    // ファミマ風：ピンポーン ピンポーン
-    playTone(988, t, 0.15);       // B5
-    playTone(784, t + 0.18, 0.15); // G5
-
-    playTone(988, t + 0.45, 0.15);
-    playTone(784, t + 0.63, 0.15);
-}
-
-
 
     function createCards() {
         const grid = document.getElementById('counter-grid');
@@ -322,25 +332,26 @@
     });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
-let initializedVisitors = false;
+    let initializedVisitors = false;
 
-onSnapshot(qVisitors, (snapshot) => {
+    onSnapshot(qVisitors, (snapshot) => {
+        const listDiv = document.getElementById('waiting-list');
+        listDiv.innerHTML = "";
 
-    const listDiv = document.getElementById('waiting-list');
-    listDiv.innerHTML = "";
-
-    // ★ 新規来店だけ音を鳴らす
-    snapshot.docChanges().forEach(change => {
-        if (initializedVisitors && change.type === "added") {
-            if (isSoundEnabled) {
-                playChime();
+        // ★ 新規来店時に音を鳴らす処理
+        let hasNew = false;
+        snapshot.docChanges().forEach(change => {
+            if (initializedVisitors && change.type === "added") {
+                hasNew = true;
             }
+        });
+        
+        // 変更を検知して、音設定がONなら鳴らす
+        if (hasNew && isSoundEnabled) {
+            window.playFamima();
         }
-    });
 
-    // 初回ロード完了
-    initializedVisitors = true;
-
+        initializedVisitors = true;
 
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
@@ -560,8 +571,3 @@ onSnapshot(qVisitors, (snapshot) => {
 </script>
 </body>
 </html>
-
-
-
-
-
