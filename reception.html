@@ -8,111 +8,118 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
-:root { --primary:#cc0000; }
+:root{ --primary:#cc0000; }
 
-body {
-    font-family: "Hiragino Kaku Gothic ProN", sans-serif;
+body{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
     margin:0;
     background:#f7f7f7;
     display:flex;
     flex-direction:column;
-    height:100vh;
+    height:100dvh;
     overflow:hidden;
 }
 
-/* ===== 背景イラスト 最背面 ===== */
+/* ===== 背景 完全最背面・タップ無効 ===== */
 body::before{
     content:"";
     position:fixed;
-    top:0; bottom:0; left:0; right:0;
+    top:0; left:0; right:0; bottom:0;
     background:url('reception1.png') center/contain no-repeat;
     opacity:0.9;
     pointer-events:none;
-    z-index:-1;
+    z-index:-10;
 }
 
+/* ===== 上部 ===== */
 header{
     background:var(--primary);
-    color:#fff;
-    padding:15px;
+    color:white;
+    padding:12px;
     text-align:center;
     font-size:24px;
     font-weight:bold;
+    z-index:10;
 }
-
 #status-bar{
     background:#000;
     color:#fff;
-    padding:8px;
+    padding:6px;
     text-align:center;
     font-size:18px;
+    z-index:10;
 }
 
 /* ===== チャット ===== */
 #chat-container{
     flex:1;
     overflow-y:auto;
-    padding:20px;
+    padding:15px;
     display:flex;
     flex-direction:column;
     gap:15px;
     scroll-behavior:smooth;
+    z-index:5;
 }
 
 .bubble{
-    padding:20px 25px;
-    border-radius:20px;
+    padding:18px 22px;
+    border-radius:18px;
     max-width:80%;
     font-size:26px;
     font-weight:bold;
 }
-
-.ai{ background:#f5f5f5; border:1px solid #ccc; align-self:flex-start; }
-.user{ background:#fff0f0; border:3px solid var(--primary); color:#cc0000; align-self:flex-end; }
+.ai{background:#f5f5f5;border:1px solid #ccc;align-self:flex-start;}
+.user{background:#fff0f0;border:3px solid var(--primary);color:#cc0000;align-self:flex-end;}
 
 /* ===== 下部操作 ===== */
 #controls{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
     background:#fff;
-    border-top:1px solid #ccc;
-    padding:20px;
+    border-top:2px solid #ccc;
+    padding:15px 10px 20px;
     text-align:center;
+    z-index:9999; /* ←最前面 */
 }
 
 #start-btn{
-    width:90%;
-    padding:30px;
+    width:95%;
+    padding:28px;
     font-size:36px;
     font-weight:bold;
     background:var(--primary);
     color:white;
     border:none;
     border-radius:50px;
+    cursor:pointer;
 }
 
-#action-area{ display:none; }
+#action-area{display:none;}
 
 #mic-btn{
     width:110px;
     height:110px;
     border-radius:50%;
-    border:5px solid var(--primary);
+    border:6px solid var(--primary);
     font-size:50px;
     color:var(--primary);
 }
 
-/* ===== 発話指示表示 ===== */
+/* ===== 発話指示 ===== */
 #speak-indicator{
-    font-size:32px;
+    font-size:28px;
     font-weight:bold;
     margin-top:10px;
-    color:#999;
+    color:#777;
 }
 #speak-indicator.active{
+    font-size:46px;
     color:#cc0000;
-    font-size:42px;
     animation:blink 1s infinite;
 }
-
 @keyframes blink{
     0%{opacity:1}
     50%{opacity:0.3}
@@ -141,171 +148,161 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* Firebase */
-const firebaseConfig = {
-    apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-    authDomain: "oh-tai.firebaseapp.com",
-    projectId: "oh-tai",
-    storageBucket: "oh-tai.firebasestorage.app",
-    messagingSenderId: "1070284840120",
-    appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+const firebaseConfig={
+ apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+ authDomain:"oh-tai.firebaseapp.com",
+ projectId:"oh-tai",
+ storageBucket:"oh-tai.firebasestorage.app",
+ messagingSenderId:"1070284840120",
+ appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
 };
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
 /* 質問 */
-const Q_PURPOSE = "本日はどのようなご用件でしょうか？";
-const Q_NAME = "恐れ入りますが、名字のみお名前を教えてください。";
-const Q_SUB = "ご契約者ご本人様でしょうか？";
-const Q_CONTACT = "契約者ご本人様へお電話でのご連絡は可能でしょうか？";
-const Q_ID = "本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？";
+const Q1="本日はどのようなご用件でしょうか？";
+const Q2="恐れ入りますが、名字のみお名前を教えてください。";
+const Q3="ご契約者ご本人様でしょうか？";
+const Q4="契約者ご本人様へお電話でのご連絡は可能でしょうか？";
+const Q5="本人確認書類（免許証またはマイナンバーカード）はお持ちでしょうか？";
 
-let questions = [Q_PURPOSE, Q_NAME, Q_SUB, Q_ID];
-let currentStep = 0;
+let questions=[Q1,Q2,Q3,Q5];
+let step=0;
 
-let userData = {purpose:"", name:"", isSubscriber:"", canContact:"", hasID:""};
+let data={purpose:"",name:"",isSub:"",contact:"",id:""};
 
 /* 判定 */
-function isNotSubscriber(t){
-    return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
-}
-
-/* 受付開始 */
-window.beginReception = () => {
-    startBtn.style.display="none";
-    actionArea.style.display="block";
-    askNext();
-};
-
-/* 質問 */
-function askNext(){
-    const q = questions[currentStep];
-    addBubble(q,"ai");
-    speak(q,true);
-}
-
-/* 音声認識 */
-const recognition = new (window.SpeechRecognition||window.webkitSpeechRecognition)();
-recognition.lang="ja-JP";
-
-recognition.onstart = ()=>{
-    micBtn.classList.add("listening");
-    speakIndicator.classList.add("active");
-    updateStatus("聞いています…","green");
-};
-
-recognition.onend = ()=>{
-    micBtn.classList.remove("listening");
-    speakIndicator.classList.remove("active");
-    updateStatus("待機中","#000");
-};
-
-recognition.onresult = e=>handleAnswer(e.results[0][0].transcript);
-window.toggleMic=()=>{try{recognition.start();}catch(e){recognition.stop();}};
-
-/* 回答処理 */
-async function handleAnswer(text){
-    addBubble(text,"user");
-
-    const q = questions[currentStep];
-
-    if(q===Q_PURPOSE) userData.purpose=text;
-    if(q===Q_NAME) userData.name=text;
-    if(q===Q_SUB){
-        userData.isSubscriber=text;
-        if(isNotSubscriber(text)){
-            questions.splice(currentStep+1,0,Q_CONTACT);
-        }
-    }
-    if(q===Q_CONTACT) userData.canContact=text;
-    if(q===Q_ID) userData.hasID=text;
-
-    currentStep++;
-
-    if(currentStep<questions.length){
-        setTimeout(askNext,800);
-        return;
-    }
-
-    let msg="ありがとうございます。スタッフがまいりますのでお待ちください。";
-    addBubble(msg,"ai");
-    await speak(msg);
-
-    await sendToAdmin();
-
-    await new Promise(r=>setTimeout(r,4000));
-    addBubble("次の受付を待機します。","ai");
-    await speak("次の受付を待機します。");
-
-    resetReception();
-}
-
-/* Firestore送信 */
-async function sendToAdmin(){
-    updateStatus("送信中…","orange");
-
-    const memo = `【本人】${userData.isSubscriber} 【契約者連絡可否】${userData.canContact||"本人"} 【本人確認書類】${userData.hasID}`;
-
-    await addDoc(collection(db,"visitors"),{
-        name:userData.name,
-        table:"AI受付",
-        content:userData.purpose,
-        memo:memo,
-        createdAt:serverTimestamp(),
-        timeStr:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})
-    });
-
-    updateStatus("受付完了","#000");
-}
-
-/* 初期化 */
-function resetReception(){
-    currentStep=0;
-    questions=[Q_PURPOSE,Q_NAME,Q_SUB,Q_ID];
-    userData={purpose:"",name:"",isSubscriber:"",canContact:"",hasID:""};
-    chatContainer.innerHTML="";
-    startBtn.style.display="block";
-    actionArea.style.display="none";
-}
-
-/* UI */
-function addBubble(t,type){
-    const d=document.createElement("div");
-    d.className="bubble "+type;
-    d.innerText=t;
-    chatContainer.appendChild(d);
-    chatContainer.scrollTop=chatContainer.scrollHeight;
-}
-
-/* 強制自動スクロール監視 */
-const observer=new MutationObserver(()=>chatContainer.scrollTop=chatContainer.scrollHeight);
-observer.observe(chatContainer,{childList:true});
-
-/* 音声 */
-function speak(text,auto=false){
-    return new Promise(res=>{
-        speechSynthesis.cancel();
-        const u=new SpeechSynthesisUtterance(text);
-        u.lang="ja-JP";
-        u.rate=1.1;
-        u.pitch=1.4;
-        u.onend=()=>{if(auto)setTimeout(toggleMic,300);res();};
-        speechSynthesis.speak(u);
-    });
-}
-
-/* ステータス */
-function updateStatus(t,c){
-    statusBar.innerText=t;
-    statusBar.style.background=c;
+function isNotSub(t){
+ return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
 }
 
 /* DOM */
-const chatContainer=document.getElementById("chat-container");
+const chat=document.getElementById("chat-container");
 const startBtn=document.getElementById("start-btn");
-const actionArea=document.getElementById("action-area");
+const action=document.getElementById("action-area");
 const micBtn=document.getElementById("mic-btn");
-const statusBar=document.getElementById("status-bar");
+const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
+
+/* 受付開始 */
+window.beginReception=()=>{
+ startBtn.style.display="none";
+ action.style.display="block";
+ ask();
+};
+
+/* 質問 */
+function ask(){
+ const q=questions[step];
+ addBubble(q,"ai");
+ speak(q,true);
+}
+
+/* 音声認識 */
+const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+rec.lang="ja-JP";
+
+rec.onstart=()=>{
+ micBtn.classList.add("listening");
+ speakIndicator.classList.add("active");
+ status.innerText="聞いています…";
+ status.style.background="green";
+};
+
+rec.onend=()=>{
+ micBtn.classList.remove("listening");
+ speakIndicator.classList.remove("active");
+ status.innerText="待機中";
+ status.style.background="#000";
+};
+
+rec.onresult=e=>answer(e.results[0][0].transcript);
+window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
+
+/* 回答処理 */
+async function answer(t){
+ addBubble(t,"user");
+ const q=questions[step];
+
+ if(q===Q1) data.purpose=t;
+ if(q===Q2) data.name=t;
+ if(q===Q3){
+   data.isSub=t;
+   if(isNotSub(t)){
+     questions.splice(step+1,0,Q4);
+   }
+ }
+ if(q===Q4) data.contact=t;
+ if(q===Q5) data.id=t;
+
+ step++;
+ if(step<questions.length){ setTimeout(ask,700); return; }
+
+ let msg="ありがとうございます。スタッフがまいりますのでお待ちください。";
+ addBubble(msg,"ai");
+ await speak(msg);
+
+ await send();
+
+ await new Promise(r=>setTimeout(r,3000));
+ reset();
+}
+
+/* Firestore送信（1行備考） */
+async function send(){
+ status.innerText="送信中…";
+ status.style.background="orange";
+
+ const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+
+ await addDoc(collection(db,"visitors"),{
+   name:data.name,
+   table:"AI受付",
+   content:data.purpose,
+   memo:memo,
+   createdAt:serverTimestamp(),
+   timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+ });
+
+ status.innerText="受付完了";
+ status.style.background="#000";
+}
+
+/* 初期化 */
+function reset(){
+ step=0;
+ questions=[Q1,Q2,Q3,Q5];
+ data={purpose:"",name:"",isSub:"",contact:"",id:""};
+ chat.innerHTML="";
+ startBtn.style.display="block";
+ action.style.display="none";
+}
+
+/* チャット追加 */
+function addBubble(t,type){
+ const d=document.createElement("div");
+ d.className="bubble "+type;
+ d.innerText=t;
+ chat.appendChild(d);
+ chat.scrollTop=chat.scrollHeight;
+}
+
+/* 監視スクロール */
+new MutationObserver(()=>chat.scrollTop=chat.scrollHeight)
+.observe(chat,{childList:true});
+
+/* 音声 */
+function speak(text,auto=false){
+ return new Promise(res=>{
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ja-JP";
+  u.rate=1.1;
+  u.pitch=1.4;
+  u.onend=()=>{ if(auto)setTimeout(toggleMic,300); res(); };
+  speechSynthesis.speak(u);
+ });
+}
 </script>
 
 </body>
