@@ -257,7 +257,7 @@ async function send(){
  const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
 
  await addDoc(collection(db,"visitors"),{
-   name:data.name+" 様",
+   name:data.name,
    table:"AI受付",
    content:data.purpose,
    memo:memo,
