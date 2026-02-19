@@ -146,7 +146,7 @@ header{
 
 <body>
 
-<video id="bg-video" loop muted playsinline src="reception.mp4"></video>
+<video id="bg-video" loop muted playsinline src="reception.mp4#t=0.001" preload="metadata"></video>
 
 <header>ドコモショップ川口Ｒ１２２号店 受付</header>
 <div id="status-bar">準備完了</div>
@@ -164,6 +164,10 @@ header{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// ★修正2：URLから "?table=〇〇" の番号を取得
+const urlParams = new URLSearchParams(window.location.search);
+const tableNum = urlParams.get('table') || '未設定';
 
 const firebaseConfig={
  apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
@@ -275,7 +279,7 @@ async function send(){
     const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
     await addDoc(collection(db,"visitors"),{
         name:data.name,
-        table:"AI受付",
+        table: tableNum + "番カウンター", // ★修正3：固定文字から取得した番号に変更
         content:data.purpose,
         memo:memo,
         createdAt:serverTimestamp(),
