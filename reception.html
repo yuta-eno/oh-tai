@@ -120,16 +120,18 @@ header{
     background: #fff;
 }
 
+/* ★修正：「お話しください」のUI改善 */
 #speak-indicator{
-    font-size:20px;
-    font-weight:bold;
-    margin-top:5px;
-    color:#555;
+    font-size: 28px;
+    font-weight: bold;
+    margin-top: 15px;
+    color: #cc0000;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 #speak-indicator.active{
-    font-size:24px;
-    color:#cc0000;
-    animation:blink 1s infinite;
+    opacity: 1;
+    animation: blink 1.2s infinite;
 }
 @keyframes blink{
     0%{opacity:1}
@@ -180,16 +182,20 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ファイル名設定 */
+/* ★修正：新しい設問ファイルの設定 */
+// 正しいコード
+const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
+const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
+const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
 const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
 const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
 const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
 const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
 const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
 
-let questions=[Q1,Q2,Q3,Q5];
+let questions=[Q0];
 let step=0;
-let data={purpose:"",name:"",isSub:"",contact:"",id:""};
+let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
 
 function isNotSub(t){
  return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
@@ -201,6 +207,22 @@ const action=document.getElementById("action-area");
 const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
+
+/* ★追加：マイク起動時の合図音 */
+function playBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+    } catch(e) { console.log("Beep error", e); }
+}
 
 /* ★修正：ダミー再生をやめ、クリックイベント内で直接質問を開始する */
 window.beginReception=()=>{
@@ -219,15 +241,16 @@ const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
 rec.onstart=()=>{
+    playBeep(); // ★合図音を鳴らす
     micBtn.classList.add("listening");
-    speakIndicator.classList.add("active");
+    speakIndicator.classList.add("active"); // ★文字を表示・点滅させる
     status.innerText="聞いています…";
     status.style.background="green";
 };
 
 rec.onend=()=>{
     micBtn.classList.remove("listening");
-    speakIndicator.classList.remove("active");
+    speakIndicator.classList.remove("active"); // ★文字を隠す
     status.innerText="待機中";
     status.style.background="#000";
 };
@@ -239,34 +262,45 @@ async function answer(t){
     addBubble(t,"user");
     const q=questions[step];
 
-    if(q===Q1) data.purpose=t;
-    if(q===Q2) data.name=t;
-    if(q===Q3){
+    /* ★修正：分岐フローのロジック */
+    if(q===Q0) {
+        data.isReserve = t;
+        if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
+            questions.push(Q_TIME, Q2, Q3, Q5); // 予約あり
+        } else {
+            questions.push(Q1, Q_WAIT, Q2, Q3, Q5); // 予約なし
+        }
+    }
+    else if(q===Q_TIME) data.reserveTime = t;
+    else if(q===Q1) data.purpose = t;
+    else if(q===Q2) data.name = t;
+    else if(q===Q3){
         data.isSub=t;
         if(isNotSub(t)){
             questions.splice(step+1,0,Q4);
         }
     }
-    if(q===Q4) data.contact=t;
-    if(q===Q5) data.id=t;
+    else if(q===Q4) data.contact=t;
+    else if(q===Q5) data.id=t;
 
     step++;
     if(step<questions.length){ 
-        setTimeout(ask, 1000); 
+        if(questions[step] === Q_WAIT) {
+            addBubble(Q_WAIT.text, "ai");
+            await speak(Q_WAIT.file, false);
+            step++;
+            setTimeout(ask, 800);
+        } else {
+            setTimeout(ask, 1000); 
+        }
         return; 
     }
 
-    /* 最終案内 */
-    let msgText="ありがとうございます。";
-    const hasNoId = /ない|持ってない|ありません|未所持|いいえ/.test(data.id);
-    if(hasNoId) msgText += "本人確認書類が無い場合、できる手続きが限られることがございます。";
-    msgText += "スタッフがお手続き可能なお時間をお伝えしに参ります。しばらくお待ちください。";
-
+    /* ★修正：新しい最終案内（finish_new.mp3のみ再生） */
+    let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    await speak("finish_start.mp3");
-    if(hasNoId) await speak("warning_id.mp3");
-    await speak("finish_end.mp3");
+    await speak("finish_new.mp3", false);
 
     await send();
     await new Promise(r=>setTimeout(r,3000));
@@ -276,11 +310,15 @@ async function answer(t){
 async function send(){
     status.innerText="送信中…";
     status.style.background="orange";
-    const memo=`【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    
+    // ★修正：予約あり/なし の情報をFirebase用に整理
+    let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
+    const memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    
     await addDoc(collection(db,"visitors"),{
         name:data.name,
         table: tableNum + "テーブル", // ★修正3：固定文字から取得した番号に変更
-        content:data.purpose,
+        content:data.purpose || "来店予約（" + data.reserveTime + "）", // 用件がない場合は予約時間を表示
         memo:memo,
         createdAt:serverTimestamp(),
         timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
@@ -291,8 +329,8 @@ async function send(){
 
 function reset(){
     step=0;
-    questions=[Q1,Q2,Q3,Q5];
-    data={purpose:"",name:"",isSub:"",contact:"",id:""};
+    questions=[Q0];
+    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     chat.innerHTML="";
     startBtn.style.display="block";
     action.style.display="none";
