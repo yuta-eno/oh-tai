@@ -120,7 +120,6 @@ header{
     background: #fff;
 }
 
-/* ★修正：「お話しください」のUI改善 */
 #speak-indicator{
     font-size: 28px;
     font-weight: bold;
@@ -133,10 +132,26 @@ header{
     opacity: 1;
     animation: blink 1.2s infinite;
 }
+
+/* ★追加：マイク再入力を促す目立つスタイル */
+#speak-indicator.manual-prompt {
+    opacity: 1;
+    color: #ff6600; /* 注意を引くオレンジ色 */
+    font-size: 24px;
+    animation: pulse 2s infinite; /* 軽くふわふわさせて目立たせる */
+}
+
 @keyframes blink{
     0%{opacity:1}
     50%{opacity:0.3}
     100%{opacity:1}
+}
+
+/* ★追加：フワフワと拡大縮小するアニメーション */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
     <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -167,7 +182,6 @@ header{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// ★修正2：URLから "?table=〇〇" の番号を取得
 const urlParams = new URLSearchParams(window.location.search);
 const tableNum = urlParams.get('table') || '未設定';
 
@@ -182,7 +196,6 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ★修正：新しい設問ファイルの設定（挨拶文フルバージョンに変更） */
 const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
 const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
@@ -195,6 +208,7 @@ const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.m
 let questions=[Q0];
 let step=0;
 let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+let isProcessing = false; // ★追加：声が正しく聞き取れたかを判定するフラグ
 
 function isNotSub(t){
  return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
@@ -207,7 +221,6 @@ const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 
-/* ★追加：マイク起動時の合図音 */
 function playBeep() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -223,11 +236,10 @@ function playBeep() {
     } catch(e) { console.log("Beep error", e); }
 }
 
-/* ★修正：ダミー再生をやめ、クリックイベント内で直接質問を開始する */
 window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
-    ask(); // ここで同期的に呼ばれるspeak内のplay()が許可されるはずです
+    ask();
 };
 
 function ask(){
@@ -240,35 +252,49 @@ const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
 rec.onstart=()=>{
-    playBeep(); // ★合図音を鳴らす
+    isProcessing = false; // ★追加：マイク起動時にフラグをリセット
+    playBeep(); 
     micBtn.classList.add("listening");
-    speakIndicator.classList.add("active"); // ★文字を表示・点滅させる
+    
+    // ★追加：通常の「● お話しください」に戻す
+    speakIndicator.innerText = "● お話しください";
+    speakIndicator.classList.remove("manual-prompt");
+    speakIndicator.classList.add("active"); 
+    
     status.innerText="聞いています…";
     status.style.background="green";
 };
 
 rec.onend=()=>{
     micBtn.classList.remove("listening");
-    speakIndicator.classList.remove("active"); // ★文字を隠す
     status.innerText="待機中";
     status.style.background="#000";
+    
+    // ★修正：無言でマイクが終了した場合のみ、テキストを変えて表示し続ける
+    speakIndicator.classList.remove("active");
+    if (!isProcessing) {
+        speakIndicator.innerText = "👆マイクのボタンをタッチしてお話しください";
+        speakIndicator.classList.add("manual-prompt");
+    }
 };
 
-rec.onresult=e=>answer(e.results[0][0].transcript);
+rec.onresult=e=>{
+    isProcessing = true; // ★追加：正しく声を聞き取れたらフラグを立てる
+    answer(e.results[0][0].transcript);
+};
+
 window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
 async function answer(t){
     addBubble(t,"user");
     const q=questions[step];
 
-    /* ★修正：分岐フローのロジック */
     if(q===Q0) {
         data.isReserve = t;
         if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
-            // ★変更：予約ありの方にも、時間（Q_TIME）の次に用件（Q1）を聞くように追加
             questions.push(Q_TIME, Q1, Q2, Q3, Q5); 
         } else {
-            questions.push(Q1, Q_WAIT, Q2, Q3, Q5); // 予約なし
+            questions.push(Q1, Q_WAIT, Q2, Q3, Q5); 
         }
     }
     else if(q===Q_TIME) data.reserveTime = t;
@@ -296,7 +322,6 @@ async function answer(t){
         return; 
     }
 
-    /* ★修正：新しい最終案内（finish_new.mp3のみ再生） */
     let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
@@ -311,14 +336,13 @@ async function send(){
     status.innerText="送信中…";
     status.style.background="orange";
     
-    // ★修正：予約あり/なし の情報をFirebase用に整理
     let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
     const memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
     
     await addDoc(collection(db,"visitors"),{
         name:data.name,
-        table: tableNum + "テーブル", // ★修正3：固定文字から取得した番号に変更
-        content:data.purpose || "来店予約（" + data.reserveTime + "）", // 用件がない場合は予約時間を表示
+        table: tableNum + "テーブル",
+        content:data.purpose || "来店予約（" + data.reserveTime + "）", 
         memo:memo,
         createdAt:serverTimestamp(),
         timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
@@ -334,6 +358,8 @@ function reset(){
     chat.innerHTML="";
     startBtn.style.display="block";
     action.style.display="none";
+    // ★追加：リセット時にインジケーターを完全に隠す
+    speakIndicator.classList.remove("active", "manual-prompt"); 
 }
 
 function addBubble(t,type){
@@ -344,30 +370,25 @@ function addBubble(t,type){
     chat.appendChild(d);
 }
 
-/* ★修正：音声再生ロジックをシンプルかつ堅牢に */
 function speak(fileName, auto=false){
     return new Promise(res=>{
         const video = document.getElementById("bg-video");
         const audio = new Audio(fileName);
 
-        // 音声開始で動画再生
         audio.onplay = () => video.play().catch(e => console.log("Video error:", e));
         
-        // 音声終了で動画停止＆マイク起動（autoの場合）
         audio.onended = () => {
             video.pause();
             if(auto) setTimeout(toggleMic, 300);
             res();
         };
 
-        // ★エラー時はアラートを出し、マイクには移行しない（原因究明のため）
         audio.onerror = (e) => {
             alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
             console.error("Audio Load Error:", e);
-            res(); // プログラム自体は止めないがマイクは起動しない
+            res(); 
         };
 
-        // 再生実行
         audio.play().catch(e => {
             alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
             console.error(e);
