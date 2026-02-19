@@ -182,8 +182,7 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ★修正：新しい設問ファイルの設定 */
-// 正しいコード
+/* ★修正：新しい設問ファイルの設定（挨拶文フルバージョンに変更） */
 const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
 const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
@@ -266,7 +265,8 @@ async function answer(t){
     if(q===Q0) {
         data.isReserve = t;
         if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
-            questions.push(Q_TIME, Q2, Q3, Q5); // 予約あり
+            // ★変更：予約ありの方にも、時間（Q_TIME）の次に用件（Q1）を聞くように追加
+            questions.push(Q_TIME, Q1, Q2, Q3, Q5); 
         } else {
             questions.push(Q1, Q_WAIT, Q2, Q3, Q5); // 予約なし
         }
