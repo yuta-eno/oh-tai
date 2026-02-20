@@ -42,7 +42,6 @@ header{
     font-size:24px;
     font-weight:bold;
     z-index: 10;
-    /* ヘッダーの高さを確保（約60px） */
     height: 36px; 
     box-sizing: content-box;
 }
@@ -55,7 +54,6 @@ header{
     z-index: 10;
 }
 
-/* AIの字幕エリア */
 #chat-container{
     position: absolute;
     bottom: 210px;
@@ -64,12 +62,10 @@ header{
     padding: 20px;
     display: flex;
     justify-content: center;
-    /* スクロール操作ができるように pointer-events を auto に戻す */
     pointer-events: auto; 
     z-index: 15;
 }
 
-/* ユーザーの認識結果エリア */
 #user-container {
     position: absolute;
     bottom: 145px;
@@ -83,12 +79,11 @@ header{
 
 .bubble{
     font-weight:bold;
-    line-height: 1.5; /* 行間を少し広げて読みやすく */
+    line-height: 1.5; 
     text-align: center;
     animation: fadeIn 0.3s ease-out;
 }
 
-/* ★修正：AI字幕（スクロール対応＆フォント最適化） */
 .ai{ 
     background: rgba(0, 0, 0, 0.75); 
     color: #fff; 
@@ -96,29 +91,19 @@ header{
     width: 90%; 
     max-width: 800px;
     padding: 15px 30px;
-    
-    /* ★フォントサイズを画面幅に合わせて自動調整（最小20px～最大28px） */
     font-size: clamp(20px, 5vw, 28px);
-
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     word-break: keep-all;
     overflow-wrap: break-word;
-
-    /* ★強制2行カットを廃止し、縦スクロールに変更 */
-    max-height: 150px; /* 3～4行分くらいの高さ制限 */
-    overflow-y: auto; /* 縦スクロールを許可 */
-    -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
-
-    /* スクロールバーを非表示にする（見た目をスッキリさせるため） */
-    scrollbar-width: none; /* Firefox対応 */
+    max-height: 150px; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+    scrollbar-width: none; 
 }
-/* Chrome, Safari用のスクロールバー非表示設定 */
 .ai::-webkit-scrollbar {
     display: none;
 }
 
-
-/* ユーザーの確認用吹き出し */
 .user{ 
     background: rgba(255, 255, 255, 0.95); 
     border: 2px solid #cc0000; 
@@ -128,7 +113,7 @@ header{
     font-size: 22px; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     display: inline-block;
-    pointer-events: auto; /* 念のため操作可能に */
+    pointer-events: auto; 
 }
 
 @keyframes fadeIn {
@@ -192,12 +177,9 @@ header{
     animation: pulse 2s infinite; 
 }
 
-/* ★修正：「はじめから」ボタンの位置変更 */
 #reset-btn-container {
     position: absolute;
-    /* ヘッダー(約60px)+ステータスバー(約30px)の下あたりに配置 */
     top: 100px; 
-    /* 画面の左側に配置 */
     left: 20px; 
     z-index: 20;
 }
@@ -211,6 +193,27 @@ header{
     font-weight: bold;
     cursor: pointer;
     display: none; 
+}
+
+/* ★追加：強制リセット用の全画面ポップアップ */
+#reset-popup {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+.popup-box {
+    background: #fff;
+    color: #cc0000;
+    padding: 40px;
+    border-radius: 20px;
+    font-size: 32px;
+    font-weight: bold;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
 }
 
 @keyframes blink{
@@ -233,6 +236,10 @@ header{
 </head>
 
 <body>
+
+<div id="reset-popup">
+    <div class="popup-box">「受付をはじめる」からやり直します。</div>
+</div>
 
 <div id="reset-btn-container">
     <button id="reset-btn-ui" onclick="forceReset()"><i class="fas fa-redo"></i> はじめから</button>
@@ -321,10 +328,13 @@ window.beginReception=()=>{
     ask();
 };
 
+/* ★修正：ダイヤログをなくし、ポップアップ表示後5秒で自動リロード */
 window.forceReset=()=>{
-    if(confirm("受付を最初からやり直しますか？")){
+    const popup = document.getElementById("reset-popup");
+    popup.style.display = "flex";
+    setTimeout(() => {
         window.location.reload();
-    }
+    }, 5000);
 };
 
 function ask(){
@@ -455,8 +465,21 @@ function addBubble(t,type){
         d.innerText=t;
         chat.appendChild(d);
         userContainer.innerHTML = ""; 
-        /* ★追加：新しいセリフが表示されたら、スクロール位置を一番上に戻す */
+        
+        /* ★修正：AIのセリフの自動スクロール（テレプロンプター機能） */
         d.scrollTop = 0;
+        // 1秒待ってから、ゆっくり自動スクロールを開始する
+        setTimeout(() => {
+            let scrollInterval = setInterval(() => {
+                // 要素が消えた場合、または一番下まで到達した場合は停止
+                if(!d.isConnected || d.scrollTop + d.clientHeight >= d.scrollHeight){
+                    clearInterval(scrollInterval);
+                } else {
+                    d.scrollTop += 1; // 1pxずつ下へスクロール
+                }
+            }, 40); // この数字を小さくすると速く、大きくするとゆっくり流れます
+        }, 1000);
+        
     } else {
         userContainer.innerHTML = ""; 
         d.innerText = "🗣️ あなた：" + t;
@@ -494,4 +517,3 @@ function speak(fileName, auto=false){
 
 </body>
 </html>
-
