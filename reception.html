@@ -66,9 +66,10 @@ header{
     z-index: 15;
 }
 
+/* ★修正：ユーザーの認識結果を、愛子の字幕（最大高さ考慮）より上に配置 */
 #user-container {
     position: absolute;
-    bottom: 145px;
+    bottom: 420px; /* 元145pxから変更：マイク帯に隠れないよう上へ移動 */
     left: 0;
     right: 0;
     display: flex;
@@ -99,6 +100,9 @@ header{
     overflow-y: auto; 
     -webkit-overflow-scrolling: touch; 
     scrollbar-width: none; 
+    
+    /* ★追加：2行目以降も1文字目に合わせて左寄せにする */
+    text-align: left; 
 }
 .ai::-webkit-scrollbar {
     display: none;
@@ -195,7 +199,6 @@ header{
     display: none; 
 }
 
-/* ★追加：強制リセット用の全画面ポップアップ */
 #reset-popup {
     display: none;
     position: fixed;
@@ -328,7 +331,6 @@ window.beginReception=()=>{
     ask();
 };
 
-/* ★修正：ダイヤログをなくし、ポップアップ表示後5秒で自動リロード */
 window.forceReset=()=>{
     const popup = document.getElementById("reset-popup");
     popup.style.display = "flex";
@@ -466,18 +468,15 @@ function addBubble(t,type){
         chat.appendChild(d);
         userContainer.innerHTML = ""; 
         
-        /* ★修正：AIのセリフの自動スクロール（テレプロンプター機能） */
         d.scrollTop = 0;
-        // 1秒待ってから、ゆっくり自動スクロールを開始する
         setTimeout(() => {
             let scrollInterval = setInterval(() => {
-                // 要素が消えた場合、または一番下まで到達した場合は停止
                 if(!d.isConnected || d.scrollTop + d.clientHeight >= d.scrollHeight){
                     clearInterval(scrollInterval);
                 } else {
-                    d.scrollTop += 1; // 1pxずつ下へスクロール
+                    d.scrollTop += 1; 
                 }
-            }, 40); // この数字を小さくすると速く、大きくするとゆっくり流れます
+            }, 40); 
         }, 1000);
         
     } else {
