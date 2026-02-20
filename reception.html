@@ -42,6 +42,9 @@ header{
     font-size:24px;
     font-weight:bold;
     z-index: 10;
+    /* ヘッダーの高さを確保（約60px） */
+    height: 36px; 
+    box-sizing: content-box;
 }
 #status-bar{
     background:#000;
@@ -52,7 +55,7 @@ header{
     z-index: 10;
 }
 
-/* ★修正：AIの字幕エリア（少し上にずらしてユーザーの言葉と被らないように） */
+/* AIの字幕エリア */
 #chat-container{
     position: absolute;
     bottom: 210px;
@@ -61,11 +64,12 @@ header{
     padding: 20px;
     display: flex;
     justify-content: center;
-    pointer-events: none;
+    /* スクロール操作ができるように pointer-events を auto に戻す */
+    pointer-events: auto; 
     z-index: 15;
 }
 
-/* ★追加：ユーザーの認識結果を表示する専用エリア */
+/* ユーザーの認識結果エリア */
 #user-container {
     position: absolute;
     bottom: 145px;
@@ -77,15 +81,14 @@ header{
     z-index: 15;
 }
 
-/* ★修正：吹き出しのベース設定を分離 */
 .bubble{
     font-weight:bold;
-    line-height: 1.4;
+    line-height: 1.5; /* 行間を少し広げて読みやすく */
     text-align: center;
     animation: fadeIn 0.3s ease-out;
 }
 
-/* ★修正：AIは「黒半透明の字幕スタイル（最大2行＆変な改行防止）」 */
+/* ★修正：AI字幕（スクロール対応＆フォント最適化） */
 .ai{ 
     background: rgba(0, 0, 0, 0.75); 
     color: #fff; 
@@ -93,17 +96,29 @@ header{
     width: 90%; 
     max-width: 800px;
     padding: 15px 30px;
-    font-size: 28px; 
+    
+    /* ★フォントサイズを画面幅に合わせて自動調整（最小20px～最大28px） */
+    font-size: clamp(20px, 5vw, 28px);
+
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    word-break: keep-all; /* 単語の途中で改行させない */
+    word-break: keep-all;
     overflow-wrap: break-word;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* 強制的に最大2行まで */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+
+    /* ★強制2行カットを廃止し、縦スクロールに変更 */
+    max-height: 150px; /* 3～4行分くらいの高さ制限 */
+    overflow-y: auto; /* 縦スクロールを許可 */
+    -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
+
+    /* スクロールバーを非表示にする（見た目をスッキリさせるため） */
+    scrollbar-width: none; /* Firefox対応 */
+}
+/* Chrome, Safari用のスクロールバー非表示設定 */
+.ai::-webkit-scrollbar {
+    display: none;
 }
 
-/* ★修正：ユーザーは「小さな確認用吹き出し」 */
+
+/* ユーザーの確認用吹き出し */
 .user{ 
     background: rgba(255, 255, 255, 0.95); 
     border: 2px solid #cc0000; 
@@ -113,6 +128,7 @@ header{
     font-size: 22px; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     display: inline-block;
+    pointer-events: auto; /* 念のため操作可能に */
 }
 
 @keyframes fadeIn {
@@ -176,11 +192,13 @@ header{
     animation: pulse 2s infinite; 
 }
 
-/* ★追加：「はじめから」ボタンの配置とデザイン */
+/* ★修正：「はじめから」ボタンの位置変更 */
 #reset-btn-container {
     position: absolute;
-    top: 10px;
-    right: 15px;
+    /* ヘッダー(約60px)+ステータスバー(約30px)の下あたりに配置 */
+    top: 100px; 
+    /* 画面の左側に配置 */
+    left: 20px; 
     z-index: 20;
 }
 #reset-btn-ui {
@@ -192,7 +210,7 @@ header{
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    display: none; /* 初期状態は非表示 */
+    display: none; 
 }
 
 @keyframes blink{
@@ -273,13 +291,13 @@ function isNotSub(t){
 }
 
 const chat=document.getElementById("chat-container");
-const userContainer=document.getElementById("user-container"); // ★追加
+const userContainer=document.getElementById("user-container"); 
 const startBtn=document.getElementById("start-btn");
 const action=document.getElementById("action-area");
 const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
-const resetBtnUi=document.getElementById("reset-btn-ui"); // ★追加
+const resetBtnUi=document.getElementById("reset-btn-ui"); 
 
 function playBeep() {
     try {
@@ -299,11 +317,10 @@ function playBeep() {
 window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
-    resetBtnUi.style.display="block"; // ★受付開始時はじめからボタンを表示
+    resetBtnUi.style.display="block"; 
     ask();
 };
 
-/* ★追加：強制リセット機能（ページを再読み込みして最も安全に初期化） */
 window.forceReset=()=>{
     if(confirm("受付を最初からやり直しますか？")){
         window.location.reload();
@@ -422,14 +439,13 @@ function reset(){
     questions=[Q0];
     data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     chat.innerHTML="";
-    userContainer.innerHTML=""; // ★追加：ユーザーの文字もリセット
+    userContainer.innerHTML=""; 
     startBtn.style.display="block";
     action.style.display="none";
-    resetBtnUi.style.display="none"; // ★追加：リセットボタンを隠す
+    resetBtnUi.style.display="none"; 
     speakIndicator.classList.remove("active", "manual-prompt"); 
 }
 
-/* ★修正：AIの言葉とユーザーの言葉をそれぞれのコンテナに振り分ける */
 function addBubble(t,type){
     const d=document.createElement("div");
     d.className="bubble "+type;
@@ -438,7 +454,9 @@ function addBubble(t,type){
         chat.innerHTML = ""; 
         d.innerText=t;
         chat.appendChild(d);
-        userContainer.innerHTML = ""; // AIが喋る時はユーザーの認識結果を消して画面をスッキリさせる
+        userContainer.innerHTML = ""; 
+        /* ★追加：新しいセリフが表示されたら、スクロール位置を一番上に戻す */
+        d.scrollTop = 0;
     } else {
         userContainer.innerHTML = ""; 
         d.innerText = "🗣️ あなた：" + t;
@@ -476,3 +494,4 @@ function speak(fileName, auto=false){
 
 </body>
 </html>
+
