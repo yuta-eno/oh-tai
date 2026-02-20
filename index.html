@@ -111,7 +111,7 @@
         }
         
         textarea.visitor-card-memo { 
-            width: 100%; box-sizing: border-box; resize: vertical; height: 2em; 
+            width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
             margin-top: 2px; font-size: 0.75rem; border: 1px solid #ddd; 
             border-radius: 2px; padding: 2px; background: #fdfdfd; 
         }
@@ -224,7 +224,7 @@
         const t = audioCtx.currentTime;
         const gainNode = audioCtx.createGain();
         gainNode.connect(audioCtx.destination);
-        gainNode.gain.value = 0.1; // 音量調整
+        gainNode.gain.value = 1.0; // 音量調整（最大音量に変更）
 
         // ファミマ入店音のメロディ定義 (音階: F#5, D5, A4, D5, E5, A5)
         // 周波数(Hz): 740, 587, 440, 587, 659, 880
@@ -246,7 +246,7 @@
             osc.stop(t + note.t + note.d);
             
             // 音の減衰エンベロープ（プッといきなり切れないように）
-            gainNode.gain.setValueAtTime(0.1, t + note.t);
+            gainNode.gain.setValueAtTime(1.0, t + note.t); // 最大音量に変更
             gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
         });
     }
@@ -306,6 +306,16 @@
                 </div>
 
                 <div class="input-group"><label>応対内容</label><select id="c-content-${i}" class="c-content"><option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option></select></div>
+                
+                <div style="display:flex; gap:2px; margin:2px 0;">
+                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.6rem; font-weight:bold; color:#666; line-height:1;">
+                        <input type="checkbox" id="c-dbarai-${i}" style="width:12px; height:12px; margin:0; flex:none;">ｄ払い初回利用
+                    </label>
+                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.6rem; font-weight:bold; color:#666; line-height:1;">
+                        <input type="checkbox" id="c-dcard-${i}" style="width:12px; height:12px; margin:0; flex:none;">ｄカード即時利用
+                    </label>
+                </div>
+
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
                 <div class="btn-row">
@@ -320,6 +330,8 @@
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
             document.getElementById(`btn-clear-name-${i}`).addEventListener('click', () => clearName(i));
+            document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
+            document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
             document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target));
         }
@@ -392,6 +404,8 @@
             table: document.getElementById(`c-table-${id}`),
             schedule: document.getElementById(`c-schedule-${id}`),
             content: document.getElementById(`c-content-${id}`),
+            dbarai: document.getElementById(`c-dbarai-${id}`),
+            dcard: document.getElementById(`c-dcard-${id}`),
             memo: document.getElementById(`c-memo-${id}`),
             start: document.getElementById(`btn-start-${id}`),
             extend: document.getElementById(`btn-extend-${id}`),
@@ -404,6 +418,8 @@
         if(document.activeElement !== els.table) els.table.value = data.table || "";
         if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
         if(document.activeElement !== els.content) els.content.value = data.content || "";
+        if(document.activeElement !== els.dbarai) els.dbarai.checked = data.dbarai || false;
+        if(document.activeElement !== els.dcard) els.dcard.checked = data.dcard || false;
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
         els.schedule.disabled = !!data.scheduledEndTime;
@@ -431,10 +447,12 @@
         const content = document.getElementById(`c-content-${id}`).value;
         const table = document.getElementById(`c-table-${id}`).value;
         const schedule = document.getElementById(`c-schedule-${id}`).value;
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
+        const dcard = document.getElementById(`c-dcard-${id}`).checked;
         const memo = document.getElementById(`c-memo-${id}`).value;
         if(!name || !content) { alert("名前と内容を入力"); return; }
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString()
+            status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard
         });
     };
     
@@ -448,6 +466,20 @@
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
     
+    window.updateDbarai = async (id, checked) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { dbarai: checked });
+        }
+    };
+
+    window.updateDcard = async (id, checked) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { dcard: checked });
+        }
+    };
+
     window.updateMemo = async (id, text) => {
         const card = document.getElementById(`counter-card-${id}`);
         if (card.classList.contains('status-active')) {
@@ -486,7 +518,7 @@
         });
         
         await updateDoc(doc(db, "counters", String(id)), {
-            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
+            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
         });
     };
     
@@ -554,7 +586,7 @@
         if(!confirm("データベースを初期化します(初回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){
             await setDoc(doc(db, "counters", String(i)), {
-                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: ""
+                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
             });
         }
         alert("完了。リロードしてください。");
@@ -571,4 +603,3 @@
 </script>
 </body>
 </html>
-
