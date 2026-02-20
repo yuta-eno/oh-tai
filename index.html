@@ -99,6 +99,15 @@
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
             margin-left: 2px; padding: 0;
         }
+
+        /* 終了予定の確定ボタン */
+        .btn-schedule-ok {
+            width: 22px; height: 22px; flex: none;
+            background: #4CAF50; color: white; border: none; border-radius: 2px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
+            padding: 0;
+        }
+        .btn-schedule-ok:hover { background: #45a049; }
         
         .visitor-form { background: #fff; padding: 5px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ccc; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 4px; font-size: 0.8rem;}
@@ -179,7 +188,7 @@
                     <th width="60">予定</th>
                     <th width="90">用件</th>
                     <th>備考</th>
-                    <th width="60">所要時間</th>
+                    <th width="50">d払い</th> <th width="50">dカード</th> <th width="60">所要時間</th>
                     <th width="40">延長</th>
                 </tr>
             </thead>
@@ -209,14 +218,12 @@
     let isSoundEnabled = false;
 
     // --- 音声処理（AudioContextを使ったシンセサイズ） ---
-    // これにより外部ファイルの読み込みエラーや再生制限を回避します
     let audioCtx = null;
 
     window.playFamima = function() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        // コンテキストがサスペンド状態なら再開を試みる
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
@@ -224,47 +231,40 @@
         const t = audioCtx.currentTime;
         const gainNode = audioCtx.createGain();
         gainNode.connect(audioCtx.destination);
-        gainNode.gain.value = 1.0; // 音量調整（最大音量に変更）
+        gainNode.gain.value = 1.0; 
 
-        // ファミマ入店音のメロディ定義 (音階: F#5, D5, A4, D5, E5, A5)
-        // 周波数(Hz): 740, 587, 440, 587, 659, 880
         const notes = [
             { f: 740, t: 0.00, d: 0.25 }, // F#5
             { f: 587, t: 0.25, d: 0.25 }, // D5
             { f: 440, t: 0.50, d: 0.25 }, // A4
             { f: 587, t: 0.75, d: 0.25 }, // D5
             { f: 659, t: 1.00, d: 0.25 }, // E5
-            { f: 880, t: 1.25, d: 0.60 }  // A5 (最後は少し長く)
+            { f: 880, t: 1.25, d: 0.60 }  // A5 
         ];
 
         notes.forEach(note => {
             const osc = audioCtx.createOscillator();
-            osc.type = "sine"; // 正弦波（柔らかい音）
+            osc.type = "sine"; 
             osc.frequency.setValueAtTime(note.f, t + note.t);
             osc.connect(gainNode);
             osc.start(t + note.t);
             osc.stop(t + note.t + note.d);
             
-            // 音の減衰エンベロープ（プッといきなり切れないように）
-            gainNode.gain.setValueAtTime(1.0, t + note.t); // 最大音量に変更
+            gainNode.gain.setValueAtTime(1.0, t + note.t); 
             gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
         });
     }
 
     window.onload = function() {
         createCards();
-        // 読み込み完了後に音声ボタンを表示
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
     };
 
-    // 音声を有効化するボタン処理
     window.enableSound = function() {
-        // AudioContextを初期化または再開（ユーザー操作必須）
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         audioCtx.resume().then(() => {
-            // テスト音を鳴らす
             window.playFamima();
             isSoundEnabled = true;
             
@@ -273,7 +273,6 @@
             btn.style.background = "#4CAF50";
             btn.style.animation = "none";
             
-            // 3秒後にボタンを消す
             setTimeout(() => {
                 btn.style.display = 'none';
             }, 3000);
@@ -301,7 +300,10 @@
                     </div>
                     <div class="input-group" style="flex:1.2;">
                         <label>終了予定</label>
-                        <input type="time" id="c-schedule-${i}" class="c-schedule" step="300">
+                        <div style="display:flex; gap:2px;">
+                            <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
+                            <button id="btn-schedule-ok-${i}" class="btn-schedule-ok" title="確定">✔</button>
+                        </div>
                     </div>
                 </div>
 
@@ -333,7 +335,11 @@
             document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
             document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target));
+            
+            document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => {
+                const inputEl = document.getElementById(`c-schedule-${i}`);
+                updateSchedule(i, inputEl);
+            });
         }
     }
 
@@ -350,7 +356,6 @@
         const listDiv = document.getElementById('waiting-list');
         listDiv.innerHTML = "";
 
-        // ★ 新規来店時に音を鳴らす処理
         let hasNew = false;
         snapshot.docChanges().forEach(change => {
             if (initializedVisitors && change.type === "added") {
@@ -358,7 +363,6 @@
             }
         });
         
-        // 変更を検知して、音設定がONなら鳴らす
         if (hasNew && isSoundEnabled) {
             window.playFamima();
         }
@@ -392,7 +396,12 @@
             localLogs.push(l);
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            
+            // チェック状態の表示
+            const dbaraiStr = l.dbarai ? "〇" : "";
+            const dcardStr = l.dcard ? "〇" : "";
+
+            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dbaraiStr}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dcardStr}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
     });
@@ -403,6 +412,7 @@
             name: document.getElementById(`c-name-${id}`),
             table: document.getElementById(`c-table-${id}`),
             schedule: document.getElementById(`c-schedule-${id}`),
+            scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`),
             content: document.getElementById(`c-content-${id}`),
             dbarai: document.getElementById(`c-dbarai-${id}`),
             dcard: document.getElementById(`c-dcard-${id}`),
@@ -423,6 +433,11 @@
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
         els.schedule.disabled = !!data.scheduledEndTime;
+        if (data.scheduledEndTime) {
+            els.scheduleBtn.style.display = "none";
+        } else {
+            els.scheduleBtn.style.display = "block";
+        }
 
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
@@ -435,7 +450,6 @@
         } else {
             els.name.disabled = false; els.clearName.disabled = false;
             els.table.disabled = false; els.content.disabled = false;
-            els.schedule.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00";
             card.dataset.startTime = "";
@@ -491,12 +505,13 @@
         const val = inputEl.value;
         if (!val) return; 
         const card = document.getElementById(`counter-card-${id}`);
+        
         if (card.classList.contains('status-active')) {
             if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
                 await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
-            } else {
-                inputEl.value = "";
             }
+        } else {
+            alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。");
         }
     };
 
@@ -507,6 +522,9 @@
         const table = document.getElementById(`c-table-${id}`).value;
         const schedule = document.getElementById(`c-schedule-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
+        // 終了時にもチェック状態を取得してログに保存する
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
+        const dcard = document.getElementById(`c-dcard-${id}`).checked;
         const memo = document.getElementById(`c-memo-${id}`).value;
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
@@ -514,7 +532,8 @@
 
         await addDoc(collection(db, "logs"), {
             createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
-            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule 
+            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule,
+            dbarai, dcard // ログに追加
         });
         
         await updateDoc(doc(db, "counters", String(id)), {
@@ -539,10 +558,13 @@
 
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,所要時間,延長\n";
+        // CSVのヘッダーにも追加
+        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.duration},${l.isExtended}\n`;
+            const dbaraiStr = l.dbarai ? "〇" : "";
+            const dcardStr = l.dcard ? "〇" : "";
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${dbaraiStr},${dcardStr},${l.duration},${l.isExtended}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
