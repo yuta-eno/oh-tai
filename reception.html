@@ -52,37 +52,73 @@ header{
     z-index: 10;
 }
 
+/* ★修正：AIの字幕エリア（少し上にずらしてユーザーの言葉と被らないように） */
 #chat-container{
     position: absolute;
-    bottom: 140px;
+    bottom: 210px;
     left: 0;
     right: 0;
     padding: 20px;
     display: flex;
     justify-content: center;
     pointer-events: none;
+    z-index: 15;
 }
 
+/* ★追加：ユーザーの認識結果を表示する専用エリア */
+#user-container {
+    position: absolute;
+    bottom: 145px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 15;
+}
+
+/* ★修正：吹き出しのベース設定を分離 */
 .bubble{
-    padding:20px 30px;
-    border-radius:25px;
-    width: 90%; 
-    max-width: 800px;
-    font-size:32px; 
     font-weight:bold;
     line-height: 1.4;
     text-align: center;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     animation: fadeIn 0.3s ease-out;
+}
+
+/* ★修正：AIは「黒半透明の字幕スタイル（最大2行＆変な改行防止）」 */
+.ai{ 
+    background: rgba(0, 0, 0, 0.75); 
+    color: #fff; 
+    border-radius: 15px;
+    width: 90%; 
+    max-width: 800px;
+    padding: 15px 30px;
+    font-size: 28px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    word-break: keep-all; /* 単語の途中で改行させない */
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 強制的に最大2行まで */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ★修正：ユーザーは「小さな確認用吹き出し」 */
+.user{ 
+    background: rgba(255, 255, 255, 0.95); 
+    border: 2px solid #cc0000; 
+    color: #333; 
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 22px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    display: inline-block;
 }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
-.ai{ background: rgba(255, 255, 255, 0.9); border: 2px solid #ccc; color: #000; }
-.user{ background: rgba(204, 0, 0, 0.9); border: 2px solid #fff; color: #fff; }
 
 #controls{
     position:fixed;
@@ -133,12 +169,30 @@ header{
     animation: blink 1.2s infinite;
 }
 
-/* ★追加：マイク再入力を促す目立つスタイル */
 #speak-indicator.manual-prompt {
     opacity: 1;
-    color: #ff6600; /* 注意を引くオレンジ色 */
+    color: #ff6600; 
     font-size: 24px;
-    animation: pulse 2s infinite; /* 軽くふわふわさせて目立たせる */
+    animation: pulse 2s infinite; 
+}
+
+/* ★追加：「はじめから」ボタンの配置とデザイン */
+#reset-btn-container {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    z-index: 20;
+}
+#reset-btn-ui {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: none; /* 初期状態は非表示 */
 }
 
 @keyframes blink{
@@ -147,7 +201,6 @@ header{
     100%{opacity:1}
 }
 
-/* ★追加：フワフワと拡大縮小するアニメーション */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -163,11 +216,16 @@ header{
 
 <body>
 
+<div id="reset-btn-container">
+    <button id="reset-btn-ui" onclick="forceReset()"><i class="fas fa-redo"></i> はじめから</button>
+</div>
+
 <video id="bg-video" loop muted playsinline src="reception.mp4#t=0.001" preload="metadata"></video>
 
 <header>ドコモショップ川口Ｒ１２２号店 受付</header>
 <div id="status-bar">準備完了</div>
 <div id="chat-container"></div>
+<div id="user-container"></div>
 
 <div id="controls">
     <button id="start-btn" onclick="beginReception()">受付をはじめる</button>
@@ -208,18 +266,20 @@ const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.m
 let questions=[Q0];
 let step=0;
 let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
-let isProcessing = false; // ★追加：声が正しく聞き取れたかを判定するフラグ
+let isProcessing = false; 
 
 function isNotSub(t){
  return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
 }
 
 const chat=document.getElementById("chat-container");
+const userContainer=document.getElementById("user-container"); // ★追加
 const startBtn=document.getElementById("start-btn");
 const action=document.getElementById("action-area");
 const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
+const resetBtnUi=document.getElementById("reset-btn-ui"); // ★追加
 
 function playBeep() {
     try {
@@ -239,7 +299,15 @@ function playBeep() {
 window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
+    resetBtnUi.style.display="block"; // ★受付開始時はじめからボタンを表示
     ask();
+};
+
+/* ★追加：強制リセット機能（ページを再読み込みして最も安全に初期化） */
+window.forceReset=()=>{
+    if(confirm("受付を最初からやり直しますか？")){
+        window.location.reload();
+    }
 };
 
 function ask(){
@@ -252,11 +320,10 @@ const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
 rec.onstart=()=>{
-    isProcessing = false; // ★追加：マイク起動時にフラグをリセット
+    isProcessing = false; 
     playBeep(); 
     micBtn.classList.add("listening");
     
-    // ★追加：通常の「● お話しください」に戻す
     speakIndicator.innerText = "● お話しください";
     speakIndicator.classList.remove("manual-prompt");
     speakIndicator.classList.add("active"); 
@@ -270,7 +337,6 @@ rec.onend=()=>{
     status.innerText="待機中";
     status.style.background="#000";
     
-    // ★修正：無言でマイクが終了した場合のみ、テキストを変えて表示し続ける
     speakIndicator.classList.remove("active");
     if (!isProcessing) {
         speakIndicator.innerText = "👆マイクのボタンをタッチしてお話しください";
@@ -279,7 +345,7 @@ rec.onend=()=>{
 };
 
 rec.onresult=e=>{
-    isProcessing = true; // ★追加：正しく声を聞き取れたらフラグを立てる
+    isProcessing = true; 
     answer(e.results[0][0].transcript);
 };
 
@@ -356,18 +422,28 @@ function reset(){
     questions=[Q0];
     data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     chat.innerHTML="";
+    userContainer.innerHTML=""; // ★追加：ユーザーの文字もリセット
     startBtn.style.display="block";
     action.style.display="none";
-    // ★追加：リセット時にインジケーターを完全に隠す
+    resetBtnUi.style.display="none"; // ★追加：リセットボタンを隠す
     speakIndicator.classList.remove("active", "manual-prompt"); 
 }
 
+/* ★修正：AIの言葉とユーザーの言葉をそれぞれのコンテナに振り分ける */
 function addBubble(t,type){
-    chat.innerHTML = ""; 
     const d=document.createElement("div");
     d.className="bubble "+type;
-    d.innerText=t;
-    chat.appendChild(d);
+    
+    if(type === "ai"){
+        chat.innerHTML = ""; 
+        d.innerText=t;
+        chat.appendChild(d);
+        userContainer.innerHTML = ""; // AIが喋る時はユーザーの認識結果を消して画面をスッキリさせる
+    } else {
+        userContainer.innerHTML = ""; 
+        d.innerText = "🗣️ あなた：" + t;
+        userContainer.appendChild(d);
+    }
 }
 
 function speak(fileName, auto=false){
