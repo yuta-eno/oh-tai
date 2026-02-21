@@ -235,7 +235,7 @@ header{
 <body>
 
 <div id="reset-popup">
-    <div class="popup-box">「受付をはじめる」からやり直します。</div>
+    <div class="popup-box">「受付をはじめる」から<br>やり直します。</div>
 </div>
 
 <div id="reset-btn-container">
@@ -277,7 +277,6 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
-// ★ここが超重要：古いAndroid 6.0でも絶対にFirebaseと通信させる魔法の設定
 db.settings({ experimentalForceLongPolling: true });
 
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
@@ -307,30 +306,7 @@ var status = document.getElementById("status-bar");
 var speakIndicator = document.getElementById("speak-indicator");
 var resetBtnUi = document.getElementById("reset-btn-ui"); 
 
-function playBeep() {
-    try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        var osc1 = ctx.createOscillator();
-        var gain1 = ctx.createGain();
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.type = "sine";
-        osc1.frequency.setValueAtTime(880, ctx.currentTime);
-        gain1.gain.setValueAtTime(0.5, ctx.currentTime); 
-        osc1.start(ctx.currentTime);
-        osc1.stop(ctx.currentTime + 0.2); 
-        
-        var osc2 = ctx.createOscillator();
-        var gain2 = ctx.createGain();
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.type = "sine";
-        osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.2); 
-        gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.2); 
-        osc2.start(ctx.currentTime + 0.2);
-        osc2.stop(ctx.currentTime + 0.6); 
-    } catch(e) { console.log("Beep error", e); }
-}
+// ★修正：HTML側の電子音(playBeep)を完全に削除しました
 
 window.beginReception = function() {
     startBtn.style.display="none";
@@ -366,7 +342,6 @@ if (!useNativeMic) {
 
 window.onNativeVoiceStart = function() {
     isProcessing = false; 
-    playBeep(); 
     micBtn.classList.add("listening");
     speakIndicator.innerText = "● お話しください";
     speakIndicator.classList.remove("manual-prompt");
@@ -445,7 +420,6 @@ function answer(t) {
         send().then(function() {
             setTimeout(reset, 3000);
         }).catch(function(err){
-            // ★万が一エラーが出た場合は画面に表示させるようにしました
             alert("送信エラー: " + err.message);
             status.innerText = "送信失敗";
             status.style.background = "red";
@@ -461,7 +435,6 @@ function send() {
     var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
     var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
     
-    // ★ここが超重要：古い端末でも絶対にエラーにならない原始的な時刻の計算
     var d = new Date();
     var h = ("0" + d.getHours()).slice(-2);
     var m = ("0" + d.getMinutes()).slice(-2);
@@ -472,7 +445,8 @@ function send() {
         table: tableNum + "テーブル",
         content: data.purpose || "来店予約（" + data.reserveTime + "）", 
         memo: memo,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        // ★修正：古い端末でフリーズの原因になるサーバータイムスタンプを廃止し、端末の時刻を保存
+        createdAt: d.getTime(), 
         timeStr: timeString
     }).then(function() {
         status.innerText = "受付完了";
