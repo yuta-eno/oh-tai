@@ -228,26 +228,26 @@
     let localLogs = [];
     let isSoundEnabled = false;
 
-    // --- スリープ防止（Wake Lock API）機能 ---
+    // --- ★スリープ防止（Wake Lock API）機能 ---
     let wakeLock = null;
     const requestWakeLock = async () => {
         try {
             if ('wakeLock' in navigator) {
                 wakeLock = await navigator.wakeLock.request('screen');
-                console.log('スリープ防止が有効になりました');
+                console.log('Wake Lock is active');
             }
         } catch (err) {
-            console.error('スリープ防止エラー:', err);
+            console.error(`${err.name}, ${err.message}`);
         }
     };
-    // タブが切り替わって戻ってきた時に再取得
-    document.addEventListener('visibilitychange', () => {
+    // タブが戻ってきたときに再取得
+    document.addEventListener('visibilitychange', async () => {
         if (wakeLock !== null && document.visibilityState === 'visible') {
-            requestWakeLock();
+            await requestWakeLock();
         }
     });
 
-    // --- 音声処理（AudioContextを使ったシンセサイズ） ---
+    // --- 音声処理 ---
     let audioCtx = null;
 
     window.playFamima = function() {
@@ -288,7 +288,7 @@
     window.onload = function() {
         createCards();
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
-        requestWakeLock(); // ロード時にスリープ防止を実行
+        requestWakeLock(); // ロード時に実行
     };
 
     window.enableSound = function() {
@@ -298,17 +298,13 @@
         audioCtx.resume().then(() => {
             window.playFamima();
             isSoundEnabled = true;
-            
             const btn = document.getElementById('btn-enable-sound');
             btn.innerText = "🔊 通知音ON (準備OK)";
             btn.style.background = "#4CAF50";
             btn.style.animation = "none";
-            
-            setTimeout(() => {
-                btn.style.display = 'none';
-            }, 3000);
+            setTimeout(() => { btn.style.display = 'none'; }, 3000);
         });
-        requestWakeLock(); // 確実にするためボタン押下時にも実行
+        requestWakeLock(); // ボタン押下時にも実行
     };
 
     function createCards() {
@@ -406,11 +402,11 @@
             const div = document.createElement('div');
             div.className = 'visitor-card';
             
-            // ★ 備考に「【予約】あり」が含まれるか、チェックボックスで予約ありの場合黄色
             if (v.isReserved || (v.memo && v.memo.includes("【予約】あり"))) {
                 div.classList.add("is-reserved");
             }
 
+            // リスト 1行表示化 + 「様」付与
             div.innerHTML = `
                 <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
                 <div style="display:flex; align-items:baseline; gap:4px; padding-right:14px; overflow:hidden; white-space:nowrap;">
@@ -438,10 +434,8 @@
             localLogs.push(l);
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            
             const dbaraiStr = l.dbarai ? "〇" : "";
             const dcardStr = l.dcard ? "〇" : "";
-
             tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dbaraiStr}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dcardStr}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
@@ -474,11 +468,7 @@
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
 
         els.schedule.disabled = !!data.scheduledEndTime;
-        if (data.scheduledEndTime) {
-            els.scheduleBtn.style.display = "none";
-        } else {
-            els.scheduleBtn.style.display = "block";
-        }
+        if (data.scheduledEndTime) { els.scheduleBtn.style.display = "none"; } else { els.scheduleBtn.style.display = "block"; }
 
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
@@ -511,9 +501,7 @@
         });
     };
     
-    window.clearName = async (id) => {
-        await updateDoc(doc(db, "counters", String(id)), { name: "" });
-    };
+    window.clearName = async (id) => { await updateDoc(doc(db, "counters", String(id)), { name: "" }); };
 
     window.toggleExtend = async (id) => {
         const card = document.getElementById(`counter-card-${id}`);
@@ -523,37 +511,28 @@
     
     window.updateDbarai = async (id, checked) => {
         const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            await updateDoc(doc(db, "counters", String(id)), { dbarai: checked });
-        }
+        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); }
     };
 
     window.updateDcard = async (id, checked) => {
         const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            await updateDoc(doc(db, "counters", String(id)), { dcard: checked });
-        }
+        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); }
     };
 
     window.updateMemo = async (id, text) => {
         const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            await updateDoc(doc(db, "counters", String(id)), { memo: text });
-        }
+        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { memo: text }); }
     };
 
     window.updateSchedule = async (id, inputEl) => {
         const val = inputEl.value;
         if (!val) return; 
         const card = document.getElementById(`counter-card-${id}`);
-        
         if (card.classList.contains('status-active')) {
             if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
                 await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
             }
-        } else {
-            alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。");
-        }
+        } else { alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。"); }
     };
 
     window.endService = async (id) => {
@@ -569,13 +548,10 @@
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
         const startTimeISO = card.dataset.startTime;
-
         await addDoc(collection(db, "logs"), {
             createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
-            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule,
-            dbarai, dcard 
+            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard 
         });
-        
         await updateDoc(doc(db, "counters", String(id)), {
             status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
         });
@@ -588,13 +564,11 @@
         const memo = document.getElementById('v-memo').value;
         const isReserved = document.getElementById('v-is-reserved').checked;
         const reserveTime = document.getElementById('v-reserve-time').value;
-        
         if(!name) return;
         await addDoc(collection(db, "visitors"), {
             createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
             name, table, content, memo, isReserved, reserveTime
         });
-        
         document.getElementById('v-name').value = '';
         document.getElementById('v-table').value = '';
         document.getElementById('v-memo').value = '';
@@ -663,9 +637,7 @@
     
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     getDoc(doc(db, "counters", "1")).then(docSnap => {
-        if(!docSnap.exists()) {
-            document.getElementById('setup-btn').style.display = 'inline-block';
-        }
+        if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; }
     });
 
 </script>
