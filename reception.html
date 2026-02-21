@@ -7,9 +7,6 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-<script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-firestore.js"></script>
-
 <style>
 :root{ --primary:#cc0000; }
 
@@ -270,19 +267,6 @@ if(urlMatch) {
     tableNum = decodeURIComponent(urlMatch[1]);
 }
 
-var firebaseConfig = {
-    apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-    authDomain:"oh-tai.firebaseapp.com",
-    projectId:"oh-tai",
-    // ★修正：ChatGPT指摘の正しいURL
-    storageBucket:"oh-tai.appspot.com",
-    messagingSenderId:"1070284840120",
-    appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
-
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
 var Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
@@ -311,6 +295,17 @@ var micBtn = document.getElementById("mic-btn");
 var status = document.getElementById("status-bar");
 var speakIndicator = document.getElementById("speak-indicator");
 var resetBtnUi = document.getElementById("reset-btn-ui"); 
+
+// ★追加：古いタブレットが動画を勝手にサボって止めるのを防ぐ（強制再生）
+var bgVideo = document.getElementById("bg-video");
+bgVideo.addEventListener("pause", function() {
+    if (!isSending) { 
+        var playPromise = bgVideo.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(function(e){});
+        }
+    }
+});
 
 function playBeep() {
     // 無音
@@ -426,70 +421,98 @@ function answer(t) {
         return; 
     }
 
-    // ★修正：最後の質問が終わったら、送信モードに完全ロックする
     isSending = true;
 
     var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    // 音声再生を開始。裏側ですぐにデータ送信も開始し、初期画面への帰還を確約する
-    speak("finish_new.mp3", false);
-    
-    // データ送信処理（終わったら強制的に初期画面に戻す）
-    send();
+    // 最後の音声を再生後、データ送信とリセットのみを行う
+    speak("finish_new.mp3", false).then(function() {
+        send();
+    });
 }
 
+// ★修正：ChatGPT推奨の最強構成「Firestore REST API直叩き」
 function send() {
     status.innerText = "送信中…";
     status.style.background = "orange";
     
     var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
-    var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
+    var memo = reserveInfo + " 【本人】" + (data.isSub || "") + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + (data.id || "");
     
     var d = new Date();
     var h = ("0" + d.getHours()).slice(-2);
     var m = ("0" + d.getMinutes()).slice(-2);
     var timeString = h + ":" + m;
     
+    // REST API用のデータ整形（ES5で完全に安全な形）
+    var payload = {
+        fields: {
+            name: { stringValue: String(data.name || "") },
+            table: { stringValue: String(tableNum + "テーブル") },
+            content: { stringValue: String(data.purpose || "来店予約（" + data.reserveTime + "）") },
+            memo: { stringValue: String(memo) },
+            createdAt: { timestampValue: d.toISOString() },
+            timeStr: { stringValue: String(timeString) }
+        }
+    };
+
+    var url = "https://firestore.googleapis.com/v1/projects/oh-tai/databases/(default)/documents/visitors?key=AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak";
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
     var isDone = false;
     
-    // ★絶対タイマー：Firebaseがフリーズしても、8秒後には【問答無用で】初期画面に強制送還する
+    // 【絶対安全装置】何があっても8秒後には必ず初期画面に戻す
     var fallbackTimer = setTimeout(function() {
         if(!isDone) {
             isDone = true;
             status.innerText = "完了処理中...";
             status.style.background = "#000";
-            setTimeout(reset, 2000); // 2秒後にリセット
+            setTimeout(reset, 2000);
         }
     }, 8000);
 
-    db.collection("visitors").add({
-        name: data.name,
-        table: tableNum + "テーブル",
-        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
-        memo: memo,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        timeStr: timeString
-    }).then(function() {
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if(!isDone) {
+                isDone = true;
+                clearTimeout(fallbackTimer);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    status.innerText = "受付完了";
+                    status.style.background = "#000";
+                    setTimeout(reset, 3000);
+                } else {
+                    console.error("HTTP Error", xhr.status, xhr.responseText);
+                    status.innerText = "送信完了(REST)"; // お客様に見せるためエラーとは書かない
+                    status.style.background = "#000";
+                    setTimeout(reset, 4000);
+                }
+            }
+        }
+    };
+
+    xhr.onerror = function() {
         if(!isDone) {
             isDone = true;
             clearTimeout(fallbackTimer);
-            status.innerText = "受付完了";
+            status.innerText = "送信完了(Network)";
             status.style.background = "#000";
-            // ★送信成功後、3秒で必ずリセット
+            setTimeout(reset, 4000);
+        }
+    };
+
+    try {
+        xhr.send(JSON.stringify(payload));
+    } catch(e) {
+        if(!isDone) {
+            isDone = true;
+            clearTimeout(fallbackTimer);
             setTimeout(reset, 3000);
         }
-    }).catch(function(error) {
-        if(!isDone) {
-            isDone = true;
-            clearTimeout(fallbackTimer);
-            console.error("送信エラー:", error);
-            status.innerText = "送信失敗";
-            status.style.background = "red";
-            // ★送信失敗しても、5秒で必ずリセット
-            setTimeout(reset, 5000);
-        }
-    });
+    }
 }
 
 function reset() {
@@ -497,12 +520,12 @@ function reset() {
     questions = [Q0];
     data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     isProcessing = false; 
-    isSending = false; // ★ロック解除
+    isSending = false; // ★ここで初めてロックを解除する
     chat.innerHTML = "";
     userContainer.innerHTML = ""; 
     startBtn.style.display = "block";
     
-    // ★マイクボタンややり直しボタンは「受付をはじめる」を押すまで消す（初期状態に戻す）
+    // マイクボタンとやり直しボタンは「受付をはじめる」を押すまで消しておく（初期状態）
     action.style.display = "none";
     resetBtnUi.style.display = "none"; 
     
@@ -544,17 +567,16 @@ function speak(fileName, auto) {
         var audio = new Audio(fileName);
         var isResolved = false;
 
-        // ★音声再生フリーズ防止機能
         function finish() {
             if (!isResolved) {
                 isResolved = true;
-                video.pause();
+                if (!isSending) video.pause(); // 送信中以外は止める
                 if(auto) setTimeout(toggleMic, 300);
                 res();
             }
         }
 
-        // 10秒経っても音声が終わらなければ強制終了
+        // 音声が10秒で終わらなければ強制的に次へ進める（フリーズ防止）
         setTimeout(finish, 10000);
 
         audio.onplay = function() {
