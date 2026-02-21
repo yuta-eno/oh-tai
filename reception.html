@@ -309,34 +309,9 @@ const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 const resetBtnUi=document.getElementById("reset-btn-ui"); 
 
-/* ★修正：合図音を「ピン・ポン」と大きくハッキリ鳴らすように変更 */
+/* ★修正：合図音を完全に無音化（Googleのシステム音だけを鳴らす） */
 function playBeep() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // 最初の音（ピン）
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.type = "sine";
-        osc1.frequency.setValueAtTime(880, ctx.currentTime);
-        gain1.gain.setValueAtTime(0.5, ctx.currentTime); // ★音量を0.1から0.5に拡大
-        osc1.start(ctx.currentTime);
-        osc1.stop(ctx.currentTime + 0.2); // ★少し長く響かせる
-        
-        // 次の音（ポン）
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.type = "sine";
-        osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.2); // ピンの直後に鳴らす
-        gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.2); // ★音量拡大
-        osc2.start(ctx.currentTime + 0.2);
-        osc2.stop(ctx.currentTime + 0.6); // ★しっかりポンと鳴らす
-        
-    } catch(e) { console.log("Beep error", e); }
+    // 中身を空にして音を消しました
 }
 
 window.beginReception=()=>{
