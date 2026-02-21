@@ -7,8 +7,8 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-firestore.js"></script>
 
 <style>
 :root{ --primary:#cc0000; }
@@ -274,7 +274,8 @@ var firebaseConfig = {
     apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
     authDomain:"oh-tai.firebaseapp.com",
     projectId:"oh-tai",
-    storageBucket:"oh-tai.firebasestorage.app",
+    // ★修正：ChatGPT指摘の正しいURL
+    storageBucket:"oh-tai.appspot.com",
     messagingSenderId:"1070284840120",
     appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
 };
@@ -296,7 +297,7 @@ var step = 0;
 var data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
 
 var isProcessing = false; 
-var isSending = false; // ★追加：無限ループを防ぐための「送信中ロック」機能
+var isSending = false; 
 
 function isNotSub(t){
     return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
@@ -312,7 +313,7 @@ var speakIndicator = document.getElementById("speak-indicator");
 var resetBtnUi = document.getElementById("reset-btn-ui"); 
 
 function playBeep() {
-    // Googleの音を使うので自前の音は鳴らさない
+    // 無音
 }
 
 window.beginReception = function() {
@@ -348,7 +349,7 @@ if (!useNativeMic) {
 }
 
 window.onNativeVoiceStart = function() {
-    if (isSending) return; // ★送信中はマイクのUI変化をブロック
+    if (isSending) return; 
     isProcessing = false; 
     micBtn.classList.add("listening");
     speakIndicator.innerText = "● お話しください";
@@ -370,14 +371,14 @@ window.onNativeVoiceEnd = function() {
 };
 
 window.onNativeVoiceResult = function(text) {
-    if (isSending) return; // ★送信中は入力されても無視（ループ防止）
+    if (isSending) return; 
     isProcessing = true; 
     answer(text);
     window.onNativeVoiceEnd();
 };
 
 window.toggleMic = function(){ 
-    if (isSending) return; // ★送信中はマイクボタンを押しても反応しない（ループ防止）
+    if (isSending) return; 
     if(window.AndroidMic) {
         window.AndroidMic.startListening();
     } else {
@@ -386,7 +387,7 @@ window.toggleMic = function(){
 };
 
 function answer(t) {
-    if (isSending) return; // 念のためのロック
+    if (isSending) return; 
     
     addBubble(t, "user");
     var q = questions[step];
@@ -425,62 +426,69 @@ function answer(t) {
         return; 
     }
 
-    // ★すべての質問が終わったら「送信モード」にロックし、ループを完全に防ぐ
+    // ★修正：最後の質問が終わったら、送信モードに完全ロックする
     isSending = true;
-
-    // ※「ボタンは消さない」というご指示通り、ボタンを消す処理（display:none）は書きません。
 
     var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    // 最後の音声を再生したら、データ送信に専念する
-    speak("finish_new.mp3", false).then(function() {
-        send().then(function() {
-            setTimeout(reset, 3000); // 送信完了後、3秒で初期画面へ
-        });
-    });
+    // 音声再生を開始。裏側ですぐにデータ送信も開始し、初期画面への帰還を確約する
+    speak("finish_new.mp3", false);
+    
+    // データ送信処理（終わったら強制的に初期画面に戻す）
+    send();
 }
 
-// ★修正：大成功したv8正規コードに、フリーズ防止の安全装置（タイムアウト）を追加
 function send() {
-    return new Promise(function(resolve) {
-        status.innerText = "送信中…";
-        status.style.background = "orange";
-        
-        var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
-        var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
-        
-        var d = new Date();
-        var h = ("0" + d.getHours()).slice(-2);
-        var m = ("0" + d.getMinutes()).slice(-2);
-        var timeString = h + ":" + m;
-        
-        // 【安全装置】万が一Firebaseがフリーズしても、8秒後には強制的にリセットして初期画面に戻す
-        var fallbackTimer = setTimeout(function() {
-            status.innerText = "通信完了"; // お客様を不安にさせない表示
+    status.innerText = "送信中…";
+    status.style.background = "orange";
+    
+    var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
+    var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
+    
+    var d = new Date();
+    var h = ("0" + d.getHours()).slice(-2);
+    var m = ("0" + d.getMinutes()).slice(-2);
+    var timeString = h + ":" + m;
+    
+    var isDone = false;
+    
+    // ★絶対タイマー：Firebaseがフリーズしても、8秒後には【問答無用で】初期画面に強制送還する
+    var fallbackTimer = setTimeout(function() {
+        if(!isDone) {
+            isDone = true;
+            status.innerText = "完了処理中...";
             status.style.background = "#000";
-            resolve();
-        }, 8000);
-        
-        db.collection("visitors").add({
-            name: data.name,
-            table: tableNum + "テーブル",
-            content: data.purpose || "来店予約（" + data.reserveTime + "）", 
-            memo: memo,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            timeStr: timeString
-        }).then(function() {
-            clearTimeout(fallbackTimer); // 成功したら安全装置を解除
+            setTimeout(reset, 2000); // 2秒後にリセット
+        }
+    }, 8000);
+
+    db.collection("visitors").add({
+        name: data.name,
+        table: tableNum + "テーブル",
+        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
+        memo: memo,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        timeStr: timeString
+    }).then(function() {
+        if(!isDone) {
+            isDone = true;
+            clearTimeout(fallbackTimer);
             status.innerText = "受付完了";
             status.style.background = "#000";
-            resolve();
-        }).catch(function(error) {
+            // ★送信成功後、3秒で必ずリセット
+            setTimeout(reset, 3000);
+        }
+    }).catch(function(error) {
+        if(!isDone) {
+            isDone = true;
             clearTimeout(fallbackTimer);
             console.error("送信エラー:", error);
-            status.innerText = "受付完了（オフライン）"; // エラーでも止まらずに返す
-            status.style.background = "#000";
-            resolve();
-        });
+            status.innerText = "送信失敗";
+            status.style.background = "red";
+            // ★送信失敗しても、5秒で必ずリセット
+            setTimeout(reset, 5000);
+        }
     });
 }
 
@@ -489,12 +497,15 @@ function reset() {
     questions = [Q0];
     data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     isProcessing = false; 
-    isSending = false; // ★ここでロックを解除し、次のお客様に備える
+    isSending = false; // ★ロック解除
     chat.innerHTML = "";
     userContainer.innerHTML = ""; 
     startBtn.style.display = "block";
+    
+    // ★マイクボタンややり直しボタンは「受付をはじめる」を押すまで消す（初期状態に戻す）
     action.style.display = "none";
     resetBtnUi.style.display = "none"; 
+    
     speakIndicator.classList.remove("active", "manual-prompt"); 
     status.innerText = "準備完了"; 
     status.style.background = "#000";
@@ -531,31 +542,32 @@ function speak(fileName, auto) {
     return new Promise(function(res) {
         var video = document.getElementById("bg-video");
         var audio = new Audio(fileName);
+        var isResolved = false;
+
+        // ★音声再生フリーズ防止機能
+        function finish() {
+            if (!isResolved) {
+                isResolved = true;
+                video.pause();
+                if(auto) setTimeout(toggleMic, 300);
+                res();
+            }
+        }
+
+        // 10秒経っても音声が終わらなければ強制終了
+        setTimeout(finish, 10000);
 
         audio.onplay = function() {
             var vp = video.play();
-            if (vp !== undefined) {
-                vp.catch(function(e) { console.log("Video error:", e); });
-            }
+            if (vp !== undefined) { vp.catch(function(){}); }
         };
         
-        audio.onended = function() {
-            video.pause();
-            if(auto) setTimeout(toggleMic, 300);
-            res();
-        };
-
-        audio.onerror = function(e) {
-            console.error("Audio Load Error:", e);
-            res(); 
-        };
+        audio.onended = finish;
+        audio.onerror = finish;
 
         var ap = audio.play();
         if (ap !== undefined) {
-            ap.catch(function(e) {
-                console.error(e);
-                res();
-            });
+            ap.catch(function() { finish(); });
         }
     });
 }
