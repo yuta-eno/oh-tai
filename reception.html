@@ -282,6 +282,9 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
+// ★修正：古い端末でも100%通信を通すための設定を追加
+db.settings({ experimentalForceLongPolling: true });
+
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
 var Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
@@ -377,6 +380,9 @@ window.toggleMic = function(){
 };
 
 function answer(t) {
+    // ★修正：受付が終わっていたら、マイクを押されても無視する（無限ループ防止！）
+    if (step >= questions.length) return;
+
     addBubble(t, "user");
     var q = questions[step];
 
@@ -414,26 +420,17 @@ function answer(t) {
         return; 
     }
 
-    // ★修正箇所1：最後の案内の時点でマイクボタンとやり直しボタンを隠し、無限ループを防ぐ
-    action.style.display = "none";
-    resetBtnUi.style.display = "none";
-
     var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
     speak("finish_new.mp3", false).then(function() {
         send().then(function() {
+            // ★修正：送信成功しても失敗しても、必ず3秒後に初期画面に戻るようにしました！
             setTimeout(reset, 3000);
-        }).catch(function(error) {
-            alert("送信エラー: " + error.message);
-            status.innerText = "送信失敗";
-            status.style.background = "red";
-            setTimeout(reset, 5000);
         });
     });
 }
 
-// ★修正箇所2：古い端末でフリーズしないよう、Firebaseの重い通信を使わずREST APIで直接送る
 function send() {
     status.innerText = "送信中…";
     status.style.background = "orange";
@@ -441,44 +438,27 @@ function send() {
     var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
     var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
     
+    // ★修正：古い端末でフリーズを引き起こすサーバータイムスタンプを廃止し、確実に日時を記録
     var d = new Date();
     var h = ("0" + d.getHours()).slice(-2);
     var m = ("0" + d.getMinutes()).slice(-2);
     var timeString = h + ":" + m;
     
-    var payload = {
-        fields: {
-            name: { stringValue: data.name },
-            table: { stringValue: tableNum + "テーブル" },
-            content: { stringValue: data.purpose || "来店予約（" + data.reserveTime + "）" },
-            memo: { stringValue: memo },
-            createdAt: { timestampValue: d.toISOString() },
-            timeStr: { stringValue: timeString }
-        }
-    };
-
-    var projectId = "oh-tai";
-    var url = "https://firestore.googleapis.com/v1/projects/" + projectId + "/databases/(default)/documents/visitors";
-
-    return new Promise(function(resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    status.innerText = "受付完了";
-                    status.style.background = "#000";
-                    resolve();
-                } else {
-                    reject(new Error("HTTP通信エラー: " + xhr.status));
-                }
-            }
-        };
-        xhr.onerror = function() {
-            reject(new Error("ネットワーク通信に失敗しました"));
-        };
-        xhr.send(JSON.stringify(payload));
+    return db.collection("visitors").add({
+        name: data.name,
+        table: tableNum + "テーブル",
+        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
+        memo: memo,
+        createdAt: d,
+        timeStr: timeString
+    }).then(function() {
+        status.innerText = "受付完了";
+        status.style.background = "#000";
+    }).catch(function(error) {
+        // ★修正：フリーズの原因だったalert(ポップアップ)を消去しました
+        console.error("送信エラー:", error);
+        status.innerText = "送信失敗";
+        status.style.background = "red";
     });
 }
 
