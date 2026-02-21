@@ -70,7 +70,7 @@ header{
 
 #user-container {
     position: absolute;
-    bottom: 420px;
+    bottom: 420px; 
     left: 0;
     right: 0;
     display: flex;
@@ -93,7 +93,6 @@ header{
     width: 90%; 
     max-width: 800px;
     padding: 15px 30px;
-    /* ★修正：古い端末がパニックを起こす新しいclamp関数をやめ、固定サイズに変更 */
     font-size: 24px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     word-break: keep-all;
@@ -265,7 +264,6 @@ header{
 </div>
 
 <script>
-// 古い端末でもURLからtable番号を取得できるように修正
 var tableNum = '未設定';
 var urlMatch = window.location.search.match(/[?&]table=([^&]+)/);
 if(urlMatch) {
@@ -281,7 +279,6 @@ var firebaseConfig = {
     appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
 };
 
-// 古いFirebaseの初期化
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
@@ -358,27 +355,35 @@ function ask() {
     speak(q.file, true);
 }
 
-var rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-rec.lang = "ja-JP";
+// ★修正：Androidのネイティブマイク通信ブリッジ
+var useNativeMic = (typeof AndroidMic !== "undefined");
+var rec;
 
-rec.onstart = function() {
+if (!useNativeMic) {
+    // パソコン等のChromeで開いた時用の予備
+    rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.lang = "ja-JP";
+    rec.onstart = function() { window.onNativeVoiceStart(); };
+    rec.onend = function() { window.onNativeVoiceEnd(); };
+    rec.onresult = function(e) { window.onNativeVoiceResult(e.results[0][0].transcript); };
+}
+
+// アプリから呼ばれる処理
+window.onNativeVoiceStart = function() {
     isProcessing = false; 
     playBeep(); 
     micBtn.classList.add("listening");
-    
     speakIndicator.innerText = "● お話しください";
     speakIndicator.classList.remove("manual-prompt");
     speakIndicator.classList.add("active"); 
-    
     status.innerText="聞いています…";
     status.style.background="green";
 };
 
-rec.onend = function() {
+window.onNativeVoiceEnd = function() {
     micBtn.classList.remove("listening");
     status.innerText="待機中";
     status.style.background="#000";
-    
     speakIndicator.classList.remove("active");
     if (!isProcessing) {
         speakIndicator.innerText = "👆マイクのボタンをタッチしてお話しください";
@@ -386,14 +391,21 @@ rec.onend = function() {
     }
 };
 
-rec.onresult = function(e) {
+window.onNativeVoiceResult = function(text) {
     isProcessing = true; 
-    answer(e.results[0][0].transcript);
+    answer(text);
+    window.onNativeVoiceEnd();
 };
 
-window.toggleMic = function(){ try{rec.start();}catch(e){rec.stop();} };
+window.toggleMic = function(){ 
+    if(useNativeMic) {
+        AndroidMic.startListening();
+    } else {
+        try{rec.start();}catch(e){rec.stop();} 
+    }
+};
 
-// ★修正：async/awaitを古い端末用に.then()に変更
+
 function answer(t) {
     addBubble(t, "user");
     var q = questions[step];
