@@ -230,12 +230,13 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-    <link rel="manifest" href="manifest.json">
+</style>
+
+<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-</style>
 </head>
 
 <body>
@@ -309,11 +310,6 @@ const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 const resetBtnUi=document.getElementById("reset-btn-ui"); 
 
-/* ★修正：合図音を完全に無音化（Googleのシステム音だけを鳴らす） */
-function playBeep() {
-    // 中身を空にして音を消しました
-}
-
 window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
@@ -335,12 +331,25 @@ function ask(){
     speak(q.file,true);
 }
 
+// パソコン等のChromeで開いた時用の予備マイク（Web Speech API）
 const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
 rec.onstart=()=>{
+    window.onNativeVoiceStart();
+};
+
+rec.onend=()=>{
+    window.onNativeVoiceEnd();
+};
+
+rec.onresult=e=>{
+    window.onNativeVoiceResult(e.results[0][0].transcript);
+};
+
+// ★追加：Androidのポップアップマイクからの合図を受け取るためのグローバル関数
+window.onNativeVoiceStart = () => {
     isProcessing = false; 
-    playBeep(); 
     micBtn.classList.add("listening");
     
     speakIndicator.innerText = "● お話しください";
@@ -351,7 +360,7 @@ rec.onstart=()=>{
     status.style.background="green";
 };
 
-rec.onend=()=>{
+window.onNativeVoiceEnd = () => {
     micBtn.classList.remove("listening");
     status.innerText="待機中";
     status.style.background="#000";
@@ -363,12 +372,21 @@ rec.onend=()=>{
     }
 };
 
-rec.onresult=e=>{
+window.onNativeVoiceResult = (text) => {
     isProcessing = true; 
-    answer(e.results[0][0].transcript);
+    answer(text);
+    window.onNativeVoiceEnd();
 };
 
-window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
+window.toggleMic=()=>{
+    // ★修正：アプリ側（AndroidMic）が存在すればGoogleポップアップマイクを呼び出す！
+    if(window.AndroidMic) {
+        window.AndroidMic.startListening();
+    } else {
+        // パソコンなどで開いた場合は今まで通りのマイクを使う
+        try{rec.start();}catch(e){rec.stop();}
+    }
+};
 
 async function answer(t){
     addBubble(t,"user");
@@ -456,7 +474,6 @@ function addBubble(t,type){
         chat.innerHTML = ""; 
         d.innerText=t;
         chat.appendChild(d);
-        /* ★修正：AIが喋り出しても、お客様が答えた言葉は消さずに画面に残す（ココを削除しました） */
         
         d.scrollTop = 0;
         setTimeout(() => {
