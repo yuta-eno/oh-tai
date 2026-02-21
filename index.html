@@ -118,6 +118,8 @@
             font-size: 0.75rem; position: relative; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 5px; 
         }
+        /* 予約ありの場合の黄色ハイライト */
+        .visitor-card.is-reserved { background: #fff9c4; border-left-color: #ff9800; }
         
         textarea.visitor-card-memo { 
             width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
@@ -169,7 +171,7 @@
                         <option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                     </select>
                 </div>
-                <div class="input-group"><label>備考</label><textarea id="v-memo" class="v-memo"></textarea></div>
+                <div class="input-group"><label>備考</label><textarea id="v-memo" class="v-memo" placeholder="【予約】あり 等"></textarea></div>
                 <button class="btn-arrival" onclick="addVisitorToDb()">来店（受付）</button>
             </div>
             <div id="waiting-list"></div>
@@ -217,6 +219,25 @@
     let localLogs = [];
     let isSoundEnabled = false;
 
+    // --- スリープ防止（Wake Lock API）機能 ---
+    let wakeLock = null;
+    const requestWakeLock = async () => {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('スリープ防止が有効になりました');
+            }
+        } catch (err) {
+            console.error('スリープ防止エラー:', err);
+        }
+    };
+    // タブが切り替わって戻ってきた時に再取得
+    document.addEventListener('visibilitychange', () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            requestWakeLock();
+        }
+    });
+
     // --- 音声処理（AudioContextを使ったシンセサイズ） ---
     let audioCtx = null;
 
@@ -258,6 +279,7 @@
     window.onload = function() {
         createCards();
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
+        requestWakeLock(); // ロード時にスリープ防止を実行
     };
 
     window.enableSound = function() {
@@ -277,6 +299,7 @@
                 btn.style.display = 'none';
             }, 3000);
         });
+        requestWakeLock(); // 確実にするためボタン押下時にも実行
     };
 
     function createCards() {
@@ -373,6 +396,12 @@
             const v = docSnap.data();
             const div = document.createElement('div');
             div.className = 'visitor-card';
+            
+            // ★ 備考に「【予約】あり」が含まれるなら黄色クラスを付与
+            if (v.memo && v.memo.includes("【予約】あり")) {
+                div.classList.add("is-reserved");
+            }
+
             div.innerHTML = `
                 <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
                 <div class="visitor-time">受付: ${v.timeStr}</div>
@@ -397,7 +426,6 @@
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
             
-            // チェック状態の表示
             const dbaraiStr = l.dbarai ? "〇" : "";
             const dcardStr = l.dcard ? "〇" : "";
 
@@ -522,7 +550,6 @@
         const table = document.getElementById(`c-table-${id}`).value;
         const schedule = document.getElementById(`c-schedule-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
-        // 終了時にもチェック状態を取得してログに保存する
         const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
         const dcard = document.getElementById(`c-dcard-${id}`).checked;
         const memo = document.getElementById(`c-memo-${id}`).value;
@@ -533,7 +560,7 @@
         await addDoc(collection(db, "logs"), {
             createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
             name, table, content, memo, duration, isExtended, scheduledEndTime: schedule,
-            dbarai, dcard // ログに追加
+            dbarai, dcard 
         });
         
         await updateDoc(doc(db, "counters", String(id)), {
@@ -558,7 +585,6 @@
 
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        // CSVのヘッダーにも追加
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
