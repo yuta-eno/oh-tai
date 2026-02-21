@@ -7,9 +7,6 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <style>
 :root{ --primary:#cc0000; }
 
@@ -93,7 +90,7 @@ header{
     width: 90%; 
     max-width: 800px;
     padding: 15px 30px;
-    font-size: 24px;
+    font-size: clamp(20px, 5vw, 28px);
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     word-break: keep-all;
     overflow-wrap: break-word;
@@ -229,12 +226,11 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-    <link rel="manifest" href="manifest.json">
+</style>
+<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-</style>
 </head>
 
 <body>
@@ -263,57 +259,57 @@ header{
     </div>
 </div>
 
-<script>
-var tableNum = '未設定';
-var urlMatch = window.location.search.match(/[?&]table=([^&]+)/);
-if(urlMatch) {
-    tableNum = decodeURIComponent(urlMatch[1]);
-}
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-var firebaseConfig = {
-    apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-    authDomain:"oh-tai.firebaseapp.com",
-    projectId:"oh-tai",
-    storageBucket:"oh-tai.firebasestorage.app",
-    messagingSenderId:"1070284840120",
-    appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+const urlParams = new URLSearchParams(window.location.search);
+const tableNum = urlParams.get('table') || '未設定';
+
+const firebaseConfig={
+ apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+ authDomain:"oh-tai.firebaseapp.com",
+ projectId:"oh-tai",
+ storageBucket:"oh-tai.firebasestorage.app",
+ messagingSenderId:"1070284840120",
+ appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
 };
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
+const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
+const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
+const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
+const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
+const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
+const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
+const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
+const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
 
-var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
-var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
-var Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
-var Q1 = { text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
-var Q2 = { text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
-var Q3 = { text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
-var Q4 = { text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
-var Q5 = { text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
-
-var questions = [Q0];
-var step = 0;
-var data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
-var isProcessing = false; 
+let questions=[Q0];
+let step=0;
+let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+let isProcessing = false; 
 
 function isNotSub(t){
-    return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
+ return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
 }
 
-var chat = document.getElementById("chat-container");
-var userContainer = document.getElementById("user-container"); 
-var startBtn = document.getElementById("start-btn");
-var action = document.getElementById("action-area");
-var micBtn = document.getElementById("mic-btn");
-var status = document.getElementById("status-bar");
-var speakIndicator = document.getElementById("speak-indicator");
-var resetBtnUi = document.getElementById("reset-btn-ui"); 
+const chat=document.getElementById("chat-container");
+const userContainer=document.getElementById("user-container"); 
+const startBtn=document.getElementById("start-btn");
+const action=document.getElementById("action-area");
+const micBtn=document.getElementById("mic-btn");
+const status=document.getElementById("status-bar");
+const speakIndicator=document.getElementById("speak-indicator");
+const resetBtnUi=document.getElementById("reset-btn-ui"); 
 
 function playBeep() {
     try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        var osc1 = ctx.createOscillator();
-        var gain1 = ctx.createGain();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
         osc1.connect(gain1);
         gain1.connect(ctx.destination);
         osc1.type = "sine";
@@ -322,8 +318,8 @@ function playBeep() {
         osc1.start(ctx.currentTime);
         osc1.stop(ctx.currentTime + 0.2); 
         
-        var osc2 = ctx.createOscillator();
-        var gain2 = ctx.createGain();
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
         osc2.connect(gain2);
         gain2.connect(ctx.destination);
         osc2.type = "sine";
@@ -334,48 +330,48 @@ function playBeep() {
     } catch(e) { console.log("Beep error", e); }
 }
 
-window.beginReception = function() {
+window.beginReception=()=>{
     startBtn.style.display="none";
     action.style.display="block";
     resetBtnUi.style.display="block"; 
     ask();
 };
 
-window.forceReset = function() {
-    var popup = document.getElementById("reset-popup");
+window.forceReset=()=>{
+    const popup = document.getElementById("reset-popup");
     popup.style.display = "flex";
-    setTimeout(function() {
+    setTimeout(() => {
         window.location.reload();
     }, 5000);
 };
 
-function ask() {
-    var q = questions[step];
+function ask(){
+    const q=questions[step];
     addBubble(q.text,"ai");
-    speak(q.file, true);
+    speak(q.file,true);
 }
 
-var rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-rec.lang = "ja-JP";
-rec.onstart = function() { window.onNativeVoiceStart(); };
-rec.onend = function() { window.onNativeVoiceEnd(); };
-rec.onresult = function(e) { window.onNativeVoiceResult(e.results[0][0].transcript); };
+const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+rec.lang="ja-JP";
 
-window.onNativeVoiceStart = function() {
+rec.onstart=()=>{
     isProcessing = false; 
     playBeep(); 
     micBtn.classList.add("listening");
+    
     speakIndicator.innerText = "● お話しください";
     speakIndicator.classList.remove("manual-prompt");
     speakIndicator.classList.add("active"); 
+    
     status.innerText="聞いています…";
     status.style.background="green";
 };
 
-window.onNativeVoiceEnd = function() {
+rec.onend=()=>{
     micBtn.classList.remove("listening");
     status.innerText="待機中";
     status.style.background="#000";
+    
     speakIndicator.classList.remove("active");
     if (!isProcessing) {
         speakIndicator.innerText = "👆マイクのボタンをタッチしてお話しください";
@@ -383,26 +379,18 @@ window.onNativeVoiceEnd = function() {
     }
 };
 
-window.onNativeVoiceResult = function(text) {
+rec.onresult=e=>{
     isProcessing = true; 
-    answer(text);
-    window.onNativeVoiceEnd();
+    answer(e.results[0][0].transcript);
 };
 
-window.toggleMic = function(){ 
-    // ★修正箇所：ボタンを押した瞬間にAndroidと繋がっているか確認する！
-    if(window.AndroidMic) {
-        window.AndroidMic.startListening();
-    } else {
-        try{rec.start();}catch(e){rec.stop();} 
-    }
-};
+window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
-function answer(t) {
-    addBubble(t, "user");
-    var q = questions[step];
+async function answer(t){
+    addBubble(t,"user");
+    const q=questions[step];
 
-    if(q === Q0) {
+    if(q===Q0) {
         data.isReserve = t;
         if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
             questions.push(Q_TIME, Q1, Q2, Q3, Q5); 
@@ -410,86 +398,84 @@ function answer(t) {
             questions.push(Q1, Q_WAIT, Q2, Q3, Q5); 
         }
     }
-    else if(q === Q_TIME) data.reserveTime = t;
-    else if(q === Q1) data.purpose = t;
-    else if(q === Q2) data.name = t;
-    else if(q === Q3) {
+    else if(q===Q_TIME) data.reserveTime = t;
+    else if(q===Q1) data.purpose = t;
+    else if(q===Q2) data.name = t;
+    else if(q===Q3){
         data.isSub=t;
         if(isNotSub(t)){
             questions.splice(step+1,0,Q4);
         }
     }
-    else if(q === Q4) data.contact = t;
-    else if(q === Q5) data.id = t;
+    else if(q===Q4) data.contact=t;
+    else if(q===Q5) data.id=t;
 
     step++;
-    if(step < questions.length) { 
+    if(step<questions.length){ 
         if(questions[step] === Q_WAIT) {
             addBubble(Q_WAIT.text, "ai");
-            speak(Q_WAIT.file, false).then(function() {
-                step++;
-                setTimeout(ask, 800);
-            });
+            await speak(Q_WAIT.file, false);
+            step++;
+            setTimeout(ask, 800);
         } else {
             setTimeout(ask, 1000); 
         }
         return; 
     }
 
-    var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
+    let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    speak("finish_new.mp3", false).then(function() {
-        send().then(function() {
-            setTimeout(reset, 3000);
-        });
-    });
+    await speak("finish_new.mp3", false);
+
+    await send();
+    await new Promise(r=>setTimeout(r,3000));
+    reset();
 }
 
-function send() {
-    status.innerText = "送信中…";
-    status.style.background = "orange";
+async function send(){
+    status.innerText="送信中…";
+    status.style.background="orange";
     
-    var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
-    var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
+    let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
+    const memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
     
-    return db.collection("visitors").add({
-        name: data.name,
+    await addDoc(collection(db,"visitors"),{
+        name:data.name,
         table: tableNum + "テーブル",
-        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
-        memo: memo,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        timeStr: new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
-    }).then(function() {
-        status.innerText = "受付完了";
-        status.style.background = "#000";
+        content:data.purpose || "来店予約（" + data.reserveTime + "）", 
+        memo:memo,
+        createdAt:serverTimestamp(),
+        timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
     });
+    status.innerText="受付完了";
+    status.style.background="#000";
 }
 
-function reset() {
-    step = 0;
-    questions = [Q0];
-    data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
-    chat.innerHTML = "";
-    userContainer.innerHTML = ""; 
-    startBtn.style.display = "block";
-    action.style.display = "none";
-    resetBtnUi.style.display = "none"; 
+function reset(){
+    step=0;
+    questions=[Q0];
+    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+    chat.innerHTML="";
+    userContainer.innerHTML=""; 
+    startBtn.style.display="block";
+    action.style.display="none";
+    resetBtnUi.style.display="none"; 
     speakIndicator.classList.remove("active", "manual-prompt"); 
 }
 
-function addBubble(t, type) {
-    var d = document.createElement("div");
-    d.className = "bubble " + type;
+function addBubble(t,type){
+    const d=document.createElement("div");
+    d.className="bubble "+type;
     
     if(type === "ai"){
         chat.innerHTML = ""; 
-        d.innerText = t;
+        d.innerText=t;
         chat.appendChild(d);
         
         d.scrollTop = 0;
-        setTimeout(function() {
-            var scrollInterval = setInterval(function() {
+        setTimeout(() => {
+            let scrollInterval = setInterval(() => {
                 if(!d.isConnected || d.scrollTop + d.clientHeight >= d.scrollHeight){
                     clearInterval(scrollInterval);
                 } else {
@@ -505,38 +491,30 @@ function addBubble(t, type) {
     }
 }
 
-function speak(fileName, auto) {
-    return new Promise(function(res) {
-        var video = document.getElementById("bg-video");
-        var audio = new Audio(fileName);
+function speak(fileName, auto=false){
+    return new Promise(res=>{
+        const video = document.getElementById("bg-video");
+        const audio = new Audio(fileName);
 
-        audio.onplay = function() {
-            var vp = video.play();
-            if (vp !== undefined) {
-                vp.catch(function(e) { console.log("Video error:", e); });
-            }
-        };
+        audio.onplay = () => video.play().catch(e => console.log("Video error:", e));
         
-        audio.onended = function() {
+        audio.onended = () => {
             video.pause();
             if(auto) setTimeout(toggleMic, 300);
             res();
         };
 
-        audio.onerror = function(e) {
+        audio.onerror = (e) => {
             alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
             console.error("Audio Load Error:", e);
             res(); 
         };
 
-        var ap = audio.play();
-        if (ap !== undefined) {
-            ap.catch(function(e) {
-                alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
-                console.error(e);
-                res();
-            });
-        }
+        audio.play().catch(e => {
+            alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
+            console.error(e);
+            res();
+        });
     });
 }
 </script>
