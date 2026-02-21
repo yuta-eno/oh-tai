@@ -229,11 +229,6 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-    <link rel="manifest" href="manifest.json">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
 </style>
 </head>
 
@@ -281,6 +276,9 @@ var firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
+
+// ★ここが超重要：古いAndroid 6.0でも絶対にFirebaseと通信させる魔法の設定
+db.settings({ experimentalForceLongPolling: true });
 
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
@@ -355,12 +353,10 @@ function ask() {
     speak(q.file, true);
 }
 
-// ★修正：Androidのネイティブマイク通信ブリッジ
 var useNativeMic = (typeof AndroidMic !== "undefined");
 var rec;
 
 if (!useNativeMic) {
-    // パソコン等のChromeで開いた時用の予備
     rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = "ja-JP";
     rec.onstart = function() { window.onNativeVoiceStart(); };
@@ -368,7 +364,6 @@ if (!useNativeMic) {
     rec.onresult = function(e) { window.onNativeVoiceResult(e.results[0][0].transcript); };
 }
 
-// アプリから呼ばれる処理
 window.onNativeVoiceStart = function() {
     isProcessing = false; 
     playBeep(); 
@@ -398,13 +393,12 @@ window.onNativeVoiceResult = function(text) {
 };
 
 window.toggleMic = function(){ 
-    if(useNativeMic) {
-        AndroidMic.startListening();
+    if(window.AndroidMic) {
+        window.AndroidMic.startListening();
     } else {
         try{rec.start();}catch(e){rec.stop();} 
     }
 };
-
 
 function answer(t) {
     addBubble(t, "user");
@@ -450,6 +444,12 @@ function answer(t) {
     speak("finish_new.mp3", false).then(function() {
         send().then(function() {
             setTimeout(reset, 3000);
+        }).catch(function(err){
+            // ★万が一エラーが出た場合は画面に表示させるようにしました
+            alert("送信エラー: " + err.message);
+            status.innerText = "送信失敗";
+            status.style.background = "red";
+            setTimeout(reset, 5000);
         });
     });
 }
@@ -461,13 +461,19 @@ function send() {
     var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
     var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
     
+    // ★ここが超重要：古い端末でも絶対にエラーにならない原始的な時刻の計算
+    var d = new Date();
+    var h = ("0" + d.getHours()).slice(-2);
+    var m = ("0" + d.getMinutes()).slice(-2);
+    var timeString = h + ":" + m;
+    
     return db.collection("visitors").add({
         name: data.name,
         table: tableNum + "テーブル",
         content: data.purpose || "来店予約（" + data.reserveTime + "）", 
         memo: memo,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        timeStr: new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+        timeStr: timeString
     }).then(function() {
         status.innerText = "受付完了";
         status.style.background = "#000";
