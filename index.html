@@ -217,25 +217,6 @@
     let localLogs = [];
     let isSoundEnabled = false;
 
-    // --- スリープ防止（Wake Lock API）機能 ---
-    let wakeLock = null;
-    const requestWakeLock = async () => {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-                console.log('スリープ防止が有効になりました');
-            }
-        } catch (err) {
-            console.error('スリープ防止エラー:', err);
-        }
-    };
-    // タブが切り替わって戻ってきた時に再取得
-    document.addEventListener('visibilitychange', () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') {
-            requestWakeLock();
-        }
-    });
-
     // --- 音声処理（AudioContextを使ったシンセサイズ） ---
     let audioCtx = null;
 
@@ -277,7 +258,6 @@
     window.onload = function() {
         createCards();
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
-        requestWakeLock(); // ロード時にスリープ防止を実行
     };
 
     window.enableSound = function() {
@@ -297,7 +277,6 @@
                 btn.style.display = 'none';
             }, 3000);
         });
-        requestWakeLock(); // 確実にするためボタン押下時にも実行
     };
 
     function createCards() {
@@ -418,7 +397,16 @@
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
             
+            // チェック状態の表示
             const dbaraiStr = l.dbarai ? "〇" : "";
             const dcardStr = l.dcard ? "〇" : "";
 
-            tr.innerHTML = `<td>${startTime
+            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dbaraiStr}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dcardStr}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            tbody.appendChild(tr);
+        });
+    });
+
+    function updateCardUI(id, data) {
+        const card = document.getElementById(`counter-card-${id}`);
+        const els = {
+            name: document.g
