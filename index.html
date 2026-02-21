@@ -409,4 +409,219 @@
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
         const els = {
-            name: document.g
+            name: document.getElementById(`c-name-${id}`),
+            table: document.getElementById(`c-table-${id}`),
+            schedule: document.getElementById(`c-schedule-${id}`),
+            scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`),
+            content: document.getElementById(`c-content-${id}`),
+            dbarai: document.getElementById(`c-dbarai-${id}`),
+            dcard: document.getElementById(`c-dcard-${id}`),
+            memo: document.getElementById(`c-memo-${id}`),
+            start: document.getElementById(`btn-start-${id}`),
+            extend: document.getElementById(`btn-extend-${id}`),
+            end: document.getElementById(`btn-end-${id}`),
+            timer: document.getElementById(`timer-${id}`),
+            clearName: document.getElementById(`btn-clear-name-${id}`)
+        };
+
+        if(document.activeElement !== els.name) els.name.value = data.name || "";
+        if(document.activeElement !== els.table) els.table.value = data.table || "";
+        if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
+        if(document.activeElement !== els.content) els.content.value = data.content || "";
+        if(document.activeElement !== els.dbarai) els.dbarai.checked = data.dbarai || false;
+        if(document.activeElement !== els.dcard) els.dcard.checked = data.dcard || false;
+        if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
+
+        els.schedule.disabled = !!data.scheduledEndTime;
+        if (data.scheduledEndTime) {
+            els.scheduleBtn.style.display = "none";
+        } else {
+            els.scheduleBtn.style.display = "block";
+        }
+
+        card.classList.remove('status-active', 'status-extended');
+        if (data.status === 'active' || data.status === 'extended') {
+            card.classList.add('status-active');
+            if (data.status === 'extended') card.classList.add('status-extended');
+            els.name.disabled = true; els.clearName.disabled = true;
+            els.table.disabled = true; els.content.disabled = true;
+            els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
+            card.dataset.startTime = data.startTime || "";
+        } else {
+            els.name.disabled = false; els.clearName.disabled = false;
+            els.table.disabled = false; els.content.disabled = false;
+            els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
+            els.timer.innerText = "00:00:00";
+            card.dataset.startTime = "";
+        }
+    }
+
+    window.startService = async (id) => {
+        const name = document.getElementById(`c-name-${id}`).value;
+        const content = document.getElementById(`c-content-${id}`).value;
+        const table = document.getElementById(`c-table-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value;
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
+        const dcard = document.getElementById(`c-dcard-${id}`).checked;
+        const memo = document.getElementById(`c-memo-${id}`).value;
+        if(!name || !content) { alert("名前と内容を入力"); return; }
+        await updateDoc(doc(db, "counters", String(id)), {
+            status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard
+        });
+    };
+    
+    window.clearName = async (id) => {
+        await updateDoc(doc(db, "counters", String(id)), { name: "" });
+    };
+
+    window.toggleExtend = async (id) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
+        await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
+    };
+    
+    window.updateDbarai = async (id, checked) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { dbarai: checked });
+        }
+    };
+
+    window.updateDcard = async (id, checked) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { dcard: checked });
+        }
+    };
+
+    window.updateMemo = async (id, text) => {
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            await updateDoc(doc(db, "counters", String(id)), { memo: text });
+        }
+    };
+
+    window.updateSchedule = async (id, inputEl) => {
+        const val = inputEl.value;
+        if (!val) return; 
+        const card = document.getElementById(`counter-card-${id}`);
+        
+        if (card.classList.contains('status-active')) {
+            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
+                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
+            }
+        } else {
+            alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。");
+        }
+    };
+
+    window.endService = async (id) => {
+        if(!confirm("終了しますか？")) return;
+        const card = document.getElementById(`counter-card-${id}`);
+        const name = document.getElementById(`c-name-${id}`).value;
+        const table = document.getElementById(`c-table-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value;
+        const content = document.getElementById(`c-content-${id}`).value;
+        // 終了時にもチェック状態を取得してログに保存する
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
+        const dcard = document.getElementById(`c-dcard-${id}`).checked;
+        const memo = document.getElementById(`c-memo-${id}`).value;
+        const duration = document.getElementById(`timer-${id}`).innerText;
+        const isExtended = card.classList.contains('status-extended') ? "あり" : "";
+        const startTimeISO = card.dataset.startTime;
+
+        await addDoc(collection(db, "logs"), {
+            createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
+            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule,
+            dbarai, dcard // ログに追加
+        });
+        
+        await updateDoc(doc(db, "counters", String(id)), {
+            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
+        });
+    };
+    
+    window.addVisitorToDb = async () => {
+        const name = document.getElementById('v-name').value;
+        const table = document.getElementById('v-table').value;
+        const content = document.getElementById('v-content').value;
+        const memo = document.getElementById('v-memo').value;
+        if(!name) return;
+        await addDoc(collection(db, "visitors"), {
+            createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+            name, table, content, memo
+        });
+        document.getElementById('v-name').value = '';
+        document.getElementById('v-table').value = '';
+        document.getElementById('v-memo').value = '';
+    };
+
+    window.exportLogsToCSV = () => {
+        if (localLogs.length === 0) { alert("データがありません"); return; }
+        // CSVのヘッダーにも追加
+        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
+        localLogs.forEach(l => {
+            const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
+            const dbaraiStr = l.dbarai ? "〇" : "";
+            const dcardStr = l.dcard ? "〇" : "";
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${dbaraiStr},${dcardStr},${l.duration},${l.isExtended}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    window.clearAllLogs = async () => {
+        if(!confirm("【警告】\nログを全削除します。よろしいですか？")) return;
+        const q = query(collection(db, "logs"));
+        const snapshot = await getDocs(q);
+        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(promises);
+        alert("削除しました");
+    }
+
+    setInterval(() => {
+        for (let i = 1; i <= TOTAL_COUNTERS; i++) {
+            const card = document.getElementById(`counter-card-${i}`);
+            const startTimeStr = card.dataset.startTime;
+            if (startTimeStr) {
+                const diff = Date.now() - new Date(startTimeStr).getTime();
+                document.getElementById(`timer-${i}`).innerText = formatDuration(diff);
+            }
+        }
+    }, 1000);
+
+    function formatDuration(ms) {
+        if (ms < 0) ms = 0;
+        const totalSec = Math.floor(ms / 1000);
+        const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+        const s = String(totalSec % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+
+    window.initFirestoreData = async () => {
+        if(!confirm("データベースを初期化します(初回のみ)")) return;
+        for(let i=1; i<=TOTAL_COUNTERS; i++){
+            await setDoc(doc(db, "counters", String(i)), {
+                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
+            });
+        }
+        alert("完了。リロードしてください。");
+        location.reload();
+    }
+    
+    import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    getDoc(doc(db, "counters", "1")).then(docSnap => {
+        if(!docSnap.exists()) {
+            document.getElementById('setup-btn').style.display = 'inline-block';
+        }
+    });
+
+</script>
+</body>
+</html>
