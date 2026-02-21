@@ -355,20 +355,12 @@ function ask() {
     speak(q.file, true);
 }
 
-// ★修正：Androidのネイティブマイク通信ブリッジ
-var useNativeMic = (typeof AndroidMic !== "undefined");
-var rec;
+var rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+rec.lang = "ja-JP";
+rec.onstart = function() { window.onNativeVoiceStart(); };
+rec.onend = function() { window.onNativeVoiceEnd(); };
+rec.onresult = function(e) { window.onNativeVoiceResult(e.results[0][0].transcript); };
 
-if (!useNativeMic) {
-    // パソコン等のChromeで開いた時用の予備
-    rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    rec.lang = "ja-JP";
-    rec.onstart = function() { window.onNativeVoiceStart(); };
-    rec.onend = function() { window.onNativeVoiceEnd(); };
-    rec.onresult = function(e) { window.onNativeVoiceResult(e.results[0][0].transcript); };
-}
-
-// アプリから呼ばれる処理
 window.onNativeVoiceStart = function() {
     isProcessing = false; 
     playBeep(); 
@@ -398,13 +390,13 @@ window.onNativeVoiceResult = function(text) {
 };
 
 window.toggleMic = function(){ 
-    if(useNativeMic) {
-        AndroidMic.startListening();
+    // ★修正箇所：ボタンを押した瞬間にAndroidと繋がっているか確認する！
+    if(window.AndroidMic) {
+        window.AndroidMic.startListening();
     } else {
         try{rec.start();}catch(e){rec.stop();} 
     }
 };
-
 
 function answer(t) {
     addBubble(t, "user");
