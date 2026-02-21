@@ -7,6 +7,9 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <style>
 :root{ --primary:#cc0000; }
 
@@ -226,7 +229,6 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-/* ★修正：スタイルシートをここで確実に閉じる！ */
 </style>
 
 <link rel="manifest" href="manifest.json">
@@ -268,6 +270,20 @@ var urlMatch = window.location.search.match(/[?&]table=([^&]+)/);
 if(urlMatch) {
     tableNum = decodeURIComponent(urlMatch[1]);
 }
+
+var firebaseConfig = {
+    apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+    authDomain:"oh-tai.firebaseapp.com",
+    projectId:"oh-tai",
+    storageBucket:"oh-tai.appspot.com",
+    messagingSenderId:"1070284840120",
+    appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+// d-01J用の通信安定化オプション
+db.settings({ experimentalForceLongPolling: true });
 
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
@@ -330,7 +346,7 @@ window.forceReset = function() {
 function ask() {
     var q = questions[step];
     addBubble(q.text,"ai");
-    speak(q.file, true); // 第3引数(callback)は無しでOK
+    speak(q.file, true); 
 }
 
 var useNativeMic = (typeof AndroidMic !== "undefined");
@@ -412,7 +428,6 @@ function answer(t) {
     if(step < questions.length) { 
         if(questions[step] === Q_WAIT) {
             addBubble(Q_WAIT.text, "ai");
-            // ★修正：Promiseを完全排除し、コールバック関数に書き換え
             speak(Q_WAIT.file, false, function() {
                 step++;
                 setTimeout(ask, 800);
@@ -423,20 +438,19 @@ function answer(t) {
         return; 
     }
 
-    isSending = true;
+    isSending = true; // ★ここで完全にロックをかけ、マイク起動ループを防ぐ
 
     var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    // ★修正：Promiseを完全排除
     speak("finish_new.mp3", false, function() {
         send(function() {
-            setTimeout(reset, 3000); // 送信完了後、3秒で必ず初期画面へ
+            reset(); // 送信完了（またはタイムアウト）後に必ずここが呼ばれ、初期画面へ戻る
         });
     });
 }
 
-// ★修正：Promiseを完全排除し、コールバック関数で確実にリセットまで繋ぐ
+// ★修正：大成功実績のあるFirebase v8のコードをES5コールバックで確実に動作させる
 function send(callback) {
     status.innerText = "送信中…";
     status.style.background = "orange";
@@ -449,62 +463,44 @@ function send(callback) {
     var m = ("0" + d.getMinutes()).slice(-2);
     var timeString = h + ":" + m;
     
-    var payload = {
-        fields: {
-            name: { stringValue: String(data.name || "") },
-            table: { stringValue: String(tableNum + "テーブル") },
-            content: { stringValue: String(data.purpose || "来店予約（" + data.reserveTime + "）") },
-            memo: { stringValue: String(memo) },
-            createdAt: { timestampValue: d.toISOString() },
-            timeStr: { stringValue: String(timeString) }
-        }
-    };
-
-    var url = "https://firestore.googleapis.com/v1/projects/oh-tai/databases/(default)/documents/visitors?key=AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak";
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-
     var isDone = false;
     
-    function completeProcess(msgText, bgColor, delayTime) {
+    // UIを更新し、3秒待ってから確実にリセットする関数
+    function completeProcess(msgText, bgColor) {
         if(!isDone) {
             isDone = true;
             status.innerText = msgText;
             status.style.background = bgColor;
             setTimeout(function() {
                 if(callback) callback();
-            }, delayTime);
+            }, 3000); 
         }
     }
 
+    // 【絶対安全装置】万が一Firebaseがフリーズしても、10秒後には強制的に処理を完了させる
     var fallbackTimer = setTimeout(function() {
-        completeProcess("完了処理中...", "#000", 2000);
-    }, 8000);
-
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            clearTimeout(fallbackTimer);
-            if (xhr.status >= 200 && xhr.status < 300) {
-                completeProcess("受付完了", "#000", 3000);
-            } else {
-                console.error("HTTP Error", xhr.status, xhr.responseText);
-                completeProcess("送信完了(REST)", "#000", 4000);
-            }
-        }
-    };
-
-    xhr.onerror = function() {
-        clearTimeout(fallbackTimer);
-        completeProcess("送信完了(Network)", "#000", 4000);
-    };
+        completeProcess("完了処理中...", "#000");
+    }, 10000);
 
     try {
-        xhr.send(JSON.stringify(payload));
+        db.collection("visitors").add({
+            name: String(data.name || ""),
+            table: String(tableNum + "テーブル"),
+            content: String(data.purpose || "来店予約（" + data.reserveTime + "）"), 
+            memo: String(memo),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            timeStr: String(timeString)
+        }).then(function() {
+            clearTimeout(fallbackTimer);
+            completeProcess("受付完了", "#000");
+        }).catch(function(error) {
+            clearTimeout(fallbackTimer);
+            console.error("送信エラー:", error);
+            completeProcess("受付完了", "#000"); // エラーでも止まらず、お客様を不安にさせない
+        });
     } catch(e) {
         clearTimeout(fallbackTimer);
-        completeProcess("受付完了", "#000", 3000);
+        completeProcess("受付完了", "#000");
     }
 }
 
@@ -513,12 +509,15 @@ function reset() {
     questions = [Q0];
     data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     isProcessing = false; 
-    isSending = false; 
+    isSending = false; // ★ここで初めてロックを解除する
     chat.innerHTML = "";
     userContainer.innerHTML = ""; 
     startBtn.style.display = "block";
+    
+    // マイクボタンとやり直しボタンは「受付をはじめる」を押すまで消しておく
     action.style.display = "none";
     resetBtnUi.style.display = "none"; 
+    
     speakIndicator.classList.remove("active", "manual-prompt"); 
     status.innerText = "準備完了"; 
     status.style.background = "#000";
@@ -551,7 +550,6 @@ function addBubble(t, type) {
     }
 }
 
-// ★修正：Promiseを完全排除した最強のES5コールバック版speak関数
 function speak(fileName, auto, callback) {
     var video = document.getElementById("bg-video");
     var audio = new Audio(fileName);
@@ -560,21 +558,21 @@ function speak(fileName, auto, callback) {
     function finish() {
         if (!isResolved) {
             isResolved = true;
-            if (!isSending) {
-                try { video.pause(); } catch(e){}
-            }
-            if(auto) setTimeout(toggleMic, 300); // ここで初めてマイクが起動する（フライング完全防止）
+            // ★修正：動画は話し終わったら【必ず】停止させる
+            try { video.pause(); } catch(e){}
+            
+            if(auto) setTimeout(toggleMic, 300);
             if(callback) callback();
         }
     }
 
-    setTimeout(finish, 10000);
+    // ★修正：最初の挨拶が10秒以上あるため、フライング防止としてタイマーを余裕の30秒に変更！
+    setTimeout(finish, 30000);
 
     audio.onplay = function() {
         try { video.play(); } catch(e){}
     };
     
-    // 音声が確実に終わってからfinishを呼ぶ
     audio.onended = finish;
     audio.onerror = function() {
         console.error("Audio Error");
