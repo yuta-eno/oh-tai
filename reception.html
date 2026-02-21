@@ -9,122 +9,524 @@
 
 <style>
 :root{ --primary:#cc0000; }
-body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;margin:0;background:#f7f7f7;height:100dvh;overflow:hidden;}
-header{background:var(--primary);color:white;padding:12px;text-align:center;font-size:22px;font-weight:bold;}
-#status-bar{background:#000;color:#fff;padding:6px;text-align:center;}
-#chat-container,#user-container{position:absolute;left:0;right:0;display:flex;justify-content:center;}
-#chat-container{bottom:210px;}
-#user-container{bottom:420px;}
-.bubble{font-weight:bold;padding:15px;border-radius:15px;max-width:90%;}
-.ai{background:#000;color:#fff;font-size:22px;}
-.user{background:#fff;border:2px solid #cc0000;font-size:20px;}
-#controls{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px;text-align:center;}
-#start-btn{width:90%;padding:20px;font-size:28px;background:#cc0000;color:#fff;border:none;border-radius:40px;}
+
+body{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    margin:0;
+    background:#f7f7f7;
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+    overflow:hidden;
+}
+
+/* 背景動画 */
+#bg-video {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 1.0; 
+    pointer-events: none;
+    z-index: -10;
+}
+
+header{
+    background:var(--primary);
+    color:white;
+    padding:12px;
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
+    z-index: 10;
+    height: 36px; 
+    box-sizing: content-box;
+}
+#status-bar{
+    background:#000;
+    color:#fff;
+    padding:6px;
+    text-align:center;
+    font-size:18px;
+    z-index: 10;
+}
+
+#chat-container{
+    position: absolute;
+    bottom: 210px;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    pointer-events: auto; 
+    z-index: 15;
+}
+
+/* ★修正：ユーザーの認識結果を、愛子の字幕（最大高さ考慮）より上に配置 */
+#user-container {
+    position: absolute;
+    bottom: 420px; /* 元145pxから変更：マイク帯に隠れないよう上へ移動 */
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 15;
+}
+
+.bubble{
+    font-weight:bold;
+    line-height: 1.5; 
+    text-align: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.ai{ 
+    background: rgba(0, 0, 0, 0.75); 
+    color: #fff; 
+    border-radius: 15px;
+    width: 90%; 
+    max-width: 800px;
+    padding: 15px 30px;
+    font-size: clamp(20px, 5vw, 28px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    max-height: 150px; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+    scrollbar-width: none; 
+    
+    /* ★追加：2行目以降も1文字目に合わせて左寄せにする */
+    text-align: left; 
+}
+.ai::-webkit-scrollbar {
+    display: none;
+}
+
+.user{ 
+    background: rgba(255, 255, 255, 0.95); 
+    border: 2px solid #cc0000; 
+    color: #333; 
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 22px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    display: inline-block;
+    pointer-events: auto; 
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#controls{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+    border-top:1px solid #ccc;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    text-align:center;
+    z-index:9999;
+}
+
+#start-btn{
+    width:90%;
+    padding:20px;
+    font-size:32px;
+    font-weight:bold;
+    background:var(--primary);
+    color:white;
+    border:none;
+    border-radius:50px;
+}
+
+#action-area{display:none;}
+
+#mic-btn{
+    width:80px;
+    height:80px;
+    border-radius:50%;
+    border:4px solid var(--primary);
+    font-size:38px;
+    color:var(--primary);
+    background: #fff;
+}
+
+#speak-indicator{
+    font-size: 28px;
+    font-weight: bold;
+    margin-top: 15px;
+    color: #cc0000;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+#speak-indicator.active{
+    opacity: 1;
+    animation: blink 1.2s infinite;
+}
+
+#speak-indicator.manual-prompt {
+    opacity: 1;
+    color: #ff6600; 
+    font-size: 24px;
+    animation: pulse 2s infinite; 
+}
+
+#reset-btn-container {
+    position: absolute;
+    top: 100px; 
+    left: 20px; 
+    z-index: 20;
+}
+#reset-btn-ui {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 2px solid white;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: none; 
+}
+
+#reset-popup {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+.popup-box {
+    background: #fff;
+    color: #cc0000;
+    padding: 40px;
+    border-radius: 20px;
+    font-size: 32px;
+    font-weight: bold;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+@keyframes blink{
+    0%{opacity:1}
+    50%{opacity:0.3}
+    100%{opacity:1}
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+    <link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 </style>
 </head>
 
 <body>
 
-<header>ドコモショップAI受付</header>
+<div id="reset-popup">
+    <div class="popup-box">「受付をはじめる」からやり直します。</div>
+</div>
+
+<div id="reset-btn-container">
+    <button id="reset-btn-ui" onclick="forceReset()"><i class="fas fa-redo"></i> はじめから</button>
+</div>
+
+<video id="bg-video" loop muted playsinline src="reception.mp4#t=0.001" preload="metadata"></video>
+
+<header>ドコモショップ川口Ｒ１２２号店 受付</header>
 <div id="status-bar">準備完了</div>
 <div id="chat-container"></div>
 <div id="user-container"></div>
 
 <div id="controls">
-<button id="start-btn" onclick="beginReception()">受付をはじめる</button>
+    <button id="start-btn" onclick="beginReception()">受付をはじめる</button>
+
+    <div id="action-area">
+        <button id="mic-btn" onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
+        <div id="speak-indicator">● お話しください</div>
+    </div>
 </div>
 
-<script>
-var API_KEY="AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak";
-var PROJECT="oh-tai";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-var tableNum="未設定";
-var urlMatch=location.search.match(/[?&]table=([^&]+)/);
-if(urlMatch) tableNum=decodeURIComponent(urlMatch[1]);
+const urlParams = new URLSearchParams(window.location.search);
+const tableNum = urlParams.get('table') || '未設定';
 
-var Q0="本日はご予約でのご来店でしょうか？";
-var Q1="本日はどのようなご用件でしょうか？";
-var Q2="お名前（名字）を教えてください。";
+const firebaseConfig={
+ apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+ authDomain:"oh-tai.firebaseapp.com",
+ projectId:"oh-tai",
+ storageBucket:"oh-tai.firebasestorage.app",
+ messagingSenderId:"1070284840120",
+ appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
-var questions=[Q0,Q1,Q2];
-var step=0;
-var data={reserve:"",purpose:"",name:""};
+const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
+const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
+const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
+const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
+const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
+const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
+const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
+const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
 
-var chat=document.getElementById("chat-container");
-var userC=document.getElementById("user-container");
+let questions=[Q0];
+let step=0;
+let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+let isProcessing = false; 
 
-function addBubble(t,type){
-  var d=document.createElement("div");
-  d.className="bubble "+type;
-  d.innerText=t;
-  if(type=="ai"){chat.innerHTML="";chat.appendChild(d);}
-  else{userC.innerHTML="";userC.appendChild(d);}
+function isNotSub(t){
+ return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
 }
 
-function beginReception(){
-  document.getElementById("start-btn").style.display="none";
-  ask();
+const chat=document.getElementById("chat-container");
+const userContainer=document.getElementById("user-container"); 
+const startBtn=document.getElementById("start-btn");
+const action=document.getElementById("action-area");
+const micBtn=document.getElementById("mic-btn");
+const status=document.getElementById("status-bar");
+const speakIndicator=document.getElementById("speak-indicator");
+const resetBtnUi=document.getElementById("reset-btn-ui"); 
+
+/* ★修正：合図音を「ピン・ポン」と大きくハッキリ鳴らすように変更 */
+function playBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 最初の音（ピン）
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(880, ctx.currentTime);
+        gain1.gain.setValueAtTime(0.5, ctx.currentTime); // ★音量を0.1から0.5に拡大
+        osc1.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + 0.2); // ★少し長く響かせる
+        
+        // 次の音（ポン）
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.2); // ピンの直後に鳴らす
+        gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.2); // ★音量拡大
+        osc2.start(ctx.currentTime + 0.2);
+        osc2.stop(ctx.currentTime + 0.6); // ★しっかりポンと鳴らす
+        
+    } catch(e) { console.log("Beep error", e); }
 }
+
+window.beginReception=()=>{
+    startBtn.style.display="none";
+    action.style.display="block";
+    resetBtnUi.style.display="block"; 
+    ask();
+};
+
+window.forceReset=()=>{
+    const popup = document.getElementById("reset-popup");
+    popup.style.display = "flex";
+    setTimeout(() => {
+        window.location.reload();
+    }, 5000);
+};
 
 function ask(){
-  addBubble(questions[step],"ai");
+    const q=questions[step];
+    addBubble(q.text,"ai");
+    speak(q.file,true);
 }
 
-function answer(t){
-  addBubble(t,"user");
+const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+rec.lang="ja-JP";
 
-  if(step==0) data.reserve=t;
-  if(step==1) data.purpose=t;
-  if(step==2) data.name=t;
+rec.onstart=()=>{
+    isProcessing = false; 
+    playBeep(); 
+    micBtn.classList.add("listening");
+    
+    speakIndicator.innerText = "● お話しください";
+    speakIndicator.classList.remove("manual-prompt");
+    speakIndicator.classList.add("active"); 
+    
+    status.innerText="聞いています…";
+    status.style.background="green";
+};
 
-  step++;
-  if(step<questions.length){ setTimeout(ask,800); return; }
-
-  addBubble("受付を登録しています…","ai");
-  sendFirestore();
-}
-
-function sendFirestore(){
-  var d=new Date();
-  var payload={
-    fields:{
-      name:{stringValue:data.name},
-      table:{stringValue:tableNum+"テーブル"},
-      content:{stringValue:data.purpose},
-      memo:{stringValue:"予約:"+data.reserve},
-      createdAt:{timestampValue:d.toISOString()}
+rec.onend=()=>{
+    micBtn.classList.remove("listening");
+    status.innerText="待機中";
+    status.style.background="#000";
+    
+    speakIndicator.classList.remove("active");
+    if (!isProcessing) {
+        speakIndicator.innerText = "👆マイクのボタンをタッチしてお話しください";
+        speakIndicator.classList.add("manual-prompt");
     }
-  };
+};
 
-  var url="https://firestore.googleapis.com/v1/projects/"+PROJECT+"/databases/(default)/documents/visitors?key="+API_KEY;
+rec.onresult=e=>{
+    isProcessing = true; 
+    answer(e.results[0][0].transcript);
+};
 
-  var xhr=new XMLHttpRequest();
-  xhr.open("POST",url,true);
-  xhr.setRequestHeader("Content-Type","application/json");
+window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
 
-  xhr.onreadystatechange=function(){
-    if(xhr.readyState==4){
-      if(xhr.status>=200&&xhr.status<300){
-        addBubble("受付完了しました","ai");
-      }else{
-        addBubble("送信失敗: "+xhr.status,"ai");
-      }
+async function answer(t){
+    addBubble(t,"user");
+    const q=questions[step];
+
+    if(q===Q0) {
+        data.isReserve = t;
+        if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
+            questions.push(Q_TIME, Q1, Q2, Q3, Q5); 
+        } else {
+            questions.push(Q1, Q_WAIT, Q2, Q3, Q5); 
+        }
     }
-  };
-  xhr.onerror=function(){
-    addBubble("ネットワークエラー","ai");
-  };
+    else if(q===Q_TIME) data.reserveTime = t;
+    else if(q===Q1) data.purpose = t;
+    else if(q===Q2) data.name = t;
+    else if(q===Q3){
+        data.isSub=t;
+        if(isNotSub(t)){
+            questions.splice(step+1,0,Q4);
+        }
+    }
+    else if(q===Q4) data.contact=t;
+    else if(q===Q5) data.id=t;
 
-  xhr.send(JSON.stringify(payload));
+    step++;
+    if(step<questions.length){ 
+        if(questions[step] === Q_WAIT) {
+            addBubble(Q_WAIT.text, "ai");
+            await speak(Q_WAIT.file, false);
+            step++;
+            setTimeout(ask, 800);
+        } else {
+            setTimeout(ask, 1000); 
+        }
+        return; 
+    }
+
+    let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
+    addBubble(msgText,"ai");
+
+    await speak("finish_new.mp3", false);
+
+    await send();
+    await new Promise(r=>setTimeout(r,3000));
+    reset();
 }
 
-/* 仮の音声入力用（テスト） */
-window.addEventListener("keydown",function(e){
-  if(e.key==="Enter"){
-    var t=prompt("入力");
-    if(t) answer(t);
-  }
-});
+async function send(){
+    status.innerText="送信中…";
+    status.style.background="orange";
+    
+    let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
+    const memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    
+    await addDoc(collection(db,"visitors"),{
+        name:data.name,
+        table: tableNum + "テーブル",
+        content:data.purpose || "来店予約（" + data.reserveTime + "）", 
+        memo:memo,
+        createdAt:serverTimestamp(),
+        timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+    });
+    status.innerText="受付完了";
+    status.style.background="#000";
+}
+
+function reset(){
+    step=0;
+    questions=[Q0];
+    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+    chat.innerHTML="";
+    userContainer.innerHTML=""; 
+    startBtn.style.display="block";
+    action.style.display="none";
+    resetBtnUi.style.display="none"; 
+    speakIndicator.classList.remove("active", "manual-prompt"); 
+}
+
+function addBubble(t,type){
+    const d=document.createElement("div");
+    d.className="bubble "+type;
+    
+    if(type === "ai"){
+        chat.innerHTML = ""; 
+        d.innerText=t;
+        chat.appendChild(d);
+        /* ★修正：AIが喋り出しても、お客様が答えた言葉は消さずに画面に残す（ココを削除しました） */
+        
+        d.scrollTop = 0;
+        setTimeout(() => {
+            let scrollInterval = setInterval(() => {
+                if(!d.isConnected || d.scrollTop + d.clientHeight >= d.scrollHeight){
+                    clearInterval(scrollInterval);
+                } else {
+                    d.scrollTop += 1; 
+                }
+            }, 40); 
+        }, 1000);
+        
+    } else {
+        userContainer.innerHTML = ""; 
+        d.innerText = "🗣️ あなた：" + t;
+        userContainer.appendChild(d);
+    }
+}
+
+function speak(fileName, auto=false){
+    return new Promise(res=>{
+        const video = document.getElementById("bg-video");
+        const audio = new Audio(fileName);
+
+        audio.onplay = () => video.play().catch(e => console.log("Video error:", e));
+        
+        audio.onended = () => {
+            video.pause();
+            if(auto) setTimeout(toggleMic, 300);
+            res();
+        };
+
+        audio.onerror = (e) => {
+            alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
+            console.error("Audio Load Error:", e);
+            res(); 
+        };
+
+        audio.play().catch(e => {
+            alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
+            console.error(e);
+            res();
+        });
+    });
+}
 </script>
 
 </body>
