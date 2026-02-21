@@ -226,12 +226,14 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-    <link rel="manifest" href="manifest.json">
+/* ★修正：スタイルシートをここで確実に閉じる！ */
+</style>
+
+<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-</style>
 </head>
 
 <body>
@@ -296,7 +298,6 @@ var status = document.getElementById("status-bar");
 var speakIndicator = document.getElementById("speak-indicator");
 var resetBtnUi = document.getElementById("reset-btn-ui"); 
 
-// ★追加：古いタブレットが動画を勝手にサボって止めるのを防ぐ（強制再生）
 var bgVideo = document.getElementById("bg-video");
 bgVideo.addEventListener("pause", function() {
     if (!isSending) { 
@@ -329,7 +330,7 @@ window.forceReset = function() {
 function ask() {
     var q = questions[step];
     addBubble(q.text,"ai");
-    speak(q.file, true);
+    speak(q.file, true); // 第3引数(callback)は無しでOK
 }
 
 var useNativeMic = (typeof AndroidMic !== "undefined");
@@ -411,7 +412,8 @@ function answer(t) {
     if(step < questions.length) { 
         if(questions[step] === Q_WAIT) {
             addBubble(Q_WAIT.text, "ai");
-            speak(Q_WAIT.file, false).then(function() {
+            // ★修正：Promiseを完全排除し、コールバック関数に書き換え
+            speak(Q_WAIT.file, false, function() {
                 step++;
                 setTimeout(ask, 800);
             });
@@ -426,14 +428,16 @@ function answer(t) {
     var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    // 最後の音声を再生後、データ送信とリセットのみを行う
-    speak("finish_new.mp3", false).then(function() {
-        send();
+    // ★修正：Promiseを完全排除
+    speak("finish_new.mp3", false, function() {
+        send(function() {
+            setTimeout(reset, 3000); // 送信完了後、3秒で必ず初期画面へ
+        });
     });
 }
 
-// ★修正：ChatGPT推奨の最強構成「Firestore REST API直叩き」
-function send() {
+// ★修正：Promiseを完全排除し、コールバック関数で確実にリセットまで繋ぐ
+function send(callback) {
     status.innerText = "送信中…";
     status.style.background = "orange";
     
@@ -445,7 +449,6 @@ function send() {
     var m = ("0" + d.getMinutes()).slice(-2);
     var timeString = h + ":" + m;
     
-    // REST API用のデータ整形（ES5で完全に安全な形）
     var payload = {
         fields: {
             name: { stringValue: String(data.name || "") },
@@ -465,53 +468,43 @@ function send() {
 
     var isDone = false;
     
-    // 【絶対安全装置】何があっても8秒後には必ず初期画面に戻す
-    var fallbackTimer = setTimeout(function() {
+    function completeProcess(msgText, bgColor, delayTime) {
         if(!isDone) {
             isDone = true;
-            status.innerText = "完了処理中...";
-            status.style.background = "#000";
-            setTimeout(reset, 2000);
+            status.innerText = msgText;
+            status.style.background = bgColor;
+            setTimeout(function() {
+                if(callback) callback();
+            }, delayTime);
         }
+    }
+
+    var fallbackTimer = setTimeout(function() {
+        completeProcess("完了処理中...", "#000", 2000);
     }, 8000);
 
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
-            if(!isDone) {
-                isDone = true;
-                clearTimeout(fallbackTimer);
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    status.innerText = "受付完了";
-                    status.style.background = "#000";
-                    setTimeout(reset, 3000);
-                } else {
-                    console.error("HTTP Error", xhr.status, xhr.responseText);
-                    status.innerText = "送信完了(REST)"; // お客様に見せるためエラーとは書かない
-                    status.style.background = "#000";
-                    setTimeout(reset, 4000);
-                }
+            clearTimeout(fallbackTimer);
+            if (xhr.status >= 200 && xhr.status < 300) {
+                completeProcess("受付完了", "#000", 3000);
+            } else {
+                console.error("HTTP Error", xhr.status, xhr.responseText);
+                completeProcess("送信完了(REST)", "#000", 4000);
             }
         }
     };
 
     xhr.onerror = function() {
-        if(!isDone) {
-            isDone = true;
-            clearTimeout(fallbackTimer);
-            status.innerText = "送信完了(Network)";
-            status.style.background = "#000";
-            setTimeout(reset, 4000);
-        }
+        clearTimeout(fallbackTimer);
+        completeProcess("送信完了(Network)", "#000", 4000);
     };
 
     try {
         xhr.send(JSON.stringify(payload));
     } catch(e) {
-        if(!isDone) {
-            isDone = true;
-            clearTimeout(fallbackTimer);
-            setTimeout(reset, 3000);
-        }
+        clearTimeout(fallbackTimer);
+        completeProcess("受付完了", "#000", 3000);
     }
 }
 
@@ -520,15 +513,12 @@ function reset() {
     questions = [Q0];
     data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
     isProcessing = false; 
-    isSending = false; // ★ここで初めてロックを解除する
+    isSending = false; 
     chat.innerHTML = "";
     userContainer.innerHTML = ""; 
     startBtn.style.display = "block";
-    
-    // マイクボタンとやり直しボタンは「受付をはじめる」を押すまで消しておく（初期状態）
     action.style.display = "none";
     resetBtnUi.style.display = "none"; 
-    
     speakIndicator.classList.remove("active", "manual-prompt"); 
     status.innerText = "準備完了"; 
     status.style.background = "#000";
@@ -561,37 +551,41 @@ function addBubble(t, type) {
     }
 }
 
-function speak(fileName, auto) {
-    return new Promise(function(res) {
-        var video = document.getElementById("bg-video");
-        var audio = new Audio(fileName);
-        var isResolved = false;
+// ★修正：Promiseを完全排除した最強のES5コールバック版speak関数
+function speak(fileName, auto, callback) {
+    var video = document.getElementById("bg-video");
+    var audio = new Audio(fileName);
+    var isResolved = false;
 
-        function finish() {
-            if (!isResolved) {
-                isResolved = true;
-                if (!isSending) video.pause(); // 送信中以外は止める
-                if(auto) setTimeout(toggleMic, 300);
-                res();
+    function finish() {
+        if (!isResolved) {
+            isResolved = true;
+            if (!isSending) {
+                try { video.pause(); } catch(e){}
             }
+            if(auto) setTimeout(toggleMic, 300); // ここで初めてマイクが起動する（フライング完全防止）
+            if(callback) callback();
         }
+    }
 
-        // 音声が10秒で終わらなければ強制的に次へ進める（フリーズ防止）
-        setTimeout(finish, 10000);
+    setTimeout(finish, 10000);
 
-        audio.onplay = function() {
-            var vp = video.play();
-            if (vp !== undefined) { vp.catch(function(){}); }
-        };
-        
-        audio.onended = finish;
-        audio.onerror = finish;
+    audio.onplay = function() {
+        try { video.play(); } catch(e){}
+    };
+    
+    // 音声が確実に終わってからfinishを呼ぶ
+    audio.onended = finish;
+    audio.onerror = function() {
+        console.error("Audio Error");
+        finish();
+    };
 
-        var ap = audio.play();
-        if (ap !== undefined) {
-            ap.catch(function() { finish(); });
-        }
-    });
+    try { 
+        audio.play(); 
+    } catch(e) { 
+        finish(); 
+    }
 }
 </script>
 
