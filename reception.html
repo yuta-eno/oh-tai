@@ -7,6 +7,9 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <style>
 :root{ --primary:#cc0000; }
 
@@ -20,7 +23,6 @@ body{
     overflow:hidden;
 }
 
-/* 背景動画 */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -66,10 +68,9 @@ header{
     z-index: 15;
 }
 
-/* ★修正：ユーザーの認識結果を、愛子の字幕（最大高さ考慮）より上に配置 */
 #user-container {
     position: absolute;
-    bottom: 420px; /* 元145pxから変更：マイク帯に隠れないよう上へ移動 */
+    bottom: 420px;
     left: 0;
     right: 0;
     display: flex;
@@ -92,7 +93,8 @@ header{
     width: 90%; 
     max-width: 800px;
     padding: 15px 30px;
-    font-size: clamp(20px, 5vw, 28px);
+    /* ★修正：古い端末がパニックを起こす新しいclamp関数をやめ、固定サイズに変更 */
+    font-size: 24px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     word-break: keep-all;
     overflow-wrap: break-word;
@@ -100,8 +102,6 @@ header{
     overflow-y: auto; 
     -webkit-overflow-scrolling: touch; 
     scrollbar-width: none; 
-    
-    /* ★追加：2行目以降も1文字目に合わせて左寄せにする */
     text-align: left; 
 }
 .ai::-webkit-scrollbar {
@@ -264,106 +264,104 @@ header{
     </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-const urlParams = new URLSearchParams(window.location.search);
-const tableNum = urlParams.get('table') || '未設定';
-
-const firebaseConfig={
- apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
- authDomain:"oh-tai.firebaseapp.com",
- projectId:"oh-tai",
- storageBucket:"oh-tai.firebasestorage.app",
- messagingSenderId:"1070284840120",
- appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
-const Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
-const Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
-const Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
-const Q1={ text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
-const Q2={ text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
-const Q3={ text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
-const Q4={ text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
-const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
-
-let questions=[Q0];
-let step=0;
-let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
-let isProcessing = false; 
-
-function isNotSub(t){
- return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
+<script>
+// 古い端末でもURLからtable番号を取得できるように修正
+var tableNum = '未設定';
+var urlMatch = window.location.search.match(/[?&]table=([^&]+)/);
+if(urlMatch) {
+    tableNum = decodeURIComponent(urlMatch[1]);
 }
 
-const chat=document.getElementById("chat-container");
-const userContainer=document.getElementById("user-container"); 
-const startBtn=document.getElementById("start-btn");
-const action=document.getElementById("action-area");
-const micBtn=document.getElementById("mic-btn");
-const status=document.getElementById("status-bar");
-const speakIndicator=document.getElementById("speak-indicator");
-const resetBtnUi=document.getElementById("reset-btn-ui"); 
+var firebaseConfig = {
+    apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
+    authDomain:"oh-tai.firebaseapp.com",
+    projectId:"oh-tai",
+    storageBucket:"oh-tai.firebasestorage.app",
+    messagingSenderId:"1070284840120",
+    appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
+};
 
-/* ★修正：合図音を「ピン・ポン」と大きくハッキリ鳴らすように変更 */
+// 古いFirebaseの初期化
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
+var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
+var Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
+var Q1 = { text: "本日はどのようなご用件でしょうか？", file: "q1.mp3" };
+var Q2 = { text: "恐れ入りますが、名字のみお名前を教えてください。", file: "q2.mp3" };
+var Q3 = { text: "ご契約者ご本人様でしょうか？", file: "q3.mp3" };
+var Q4 = { text: "契約者ご本人様へお電話でのご連絡は可能でしょうか？", file: "q4.mp3" };
+var Q5 = { text: "本人確認書類はお持ちでしょうか？", file: "q5.mp3" };
+
+var questions = [Q0];
+var step = 0;
+var data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+var isProcessing = false; 
+
+function isNotSub(t){
+    return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
+}
+
+var chat = document.getElementById("chat-container");
+var userContainer = document.getElementById("user-container"); 
+var startBtn = document.getElementById("start-btn");
+var action = document.getElementById("action-area");
+var micBtn = document.getElementById("mic-btn");
+var status = document.getElementById("status-bar");
+var speakIndicator = document.getElementById("speak-indicator");
+var resetBtnUi = document.getElementById("reset-btn-ui"); 
+
 function playBeep() {
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // 最初の音（ピン）
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var osc1 = ctx.createOscillator();
+        var gain1 = ctx.createGain();
         osc1.connect(gain1);
         gain1.connect(ctx.destination);
         osc1.type = "sine";
         osc1.frequency.setValueAtTime(880, ctx.currentTime);
-        gain1.gain.setValueAtTime(0.5, ctx.currentTime); // ★音量を0.1から0.5に拡大
+        gain1.gain.setValueAtTime(0.5, ctx.currentTime); 
         osc1.start(ctx.currentTime);
-        osc1.stop(ctx.currentTime + 0.2); // ★少し長く響かせる
+        osc1.stop(ctx.currentTime + 0.2); 
         
-        // 次の音（ポン）
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
+        var osc2 = ctx.createOscillator();
+        var gain2 = ctx.createGain();
         osc2.connect(gain2);
         gain2.connect(ctx.destination);
         osc2.type = "sine";
-        osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.2); // ピンの直後に鳴らす
-        gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.2); // ★音量拡大
+        osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.2); 
+        gain2.gain.setValueAtTime(0.5, ctx.currentTime + 0.2); 
         osc2.start(ctx.currentTime + 0.2);
-        osc2.stop(ctx.currentTime + 0.6); // ★しっかりポンと鳴らす
-        
+        osc2.stop(ctx.currentTime + 0.6); 
     } catch(e) { console.log("Beep error", e); }
 }
 
-window.beginReception=()=>{
+window.beginReception = function() {
     startBtn.style.display="none";
     action.style.display="block";
     resetBtnUi.style.display="block"; 
     ask();
 };
 
-window.forceReset=()=>{
-    const popup = document.getElementById("reset-popup");
+window.forceReset = function() {
+    var popup = document.getElementById("reset-popup");
     popup.style.display = "flex";
-    setTimeout(() => {
+    setTimeout(function() {
         window.location.reload();
     }, 5000);
 };
 
-function ask(){
-    const q=questions[step];
+function ask() {
+    var q = questions[step];
     addBubble(q.text,"ai");
-    speak(q.file,true);
+    speak(q.file, true);
 }
 
-const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
-rec.lang="ja-JP";
+var rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+rec.lang = "ja-JP";
 
-rec.onstart=()=>{
+rec.onstart = function() {
     isProcessing = false; 
     playBeep(); 
     micBtn.classList.add("listening");
@@ -376,7 +374,7 @@ rec.onstart=()=>{
     status.style.background="green";
 };
 
-rec.onend=()=>{
+rec.onend = function() {
     micBtn.classList.remove("listening");
     status.innerText="待機中";
     status.style.background="#000";
@@ -388,18 +386,19 @@ rec.onend=()=>{
     }
 };
 
-rec.onresult=e=>{
+rec.onresult = function(e) {
     isProcessing = true; 
     answer(e.results[0][0].transcript);
 };
 
-window.toggleMic=()=>{try{rec.start();}catch(e){rec.stop();}};
+window.toggleMic = function(){ try{rec.start();}catch(e){rec.stop();} };
 
-async function answer(t){
-    addBubble(t,"user");
-    const q=questions[step];
+// ★修正：async/awaitを古い端末用に.then()に変更
+function answer(t) {
+    addBubble(t, "user");
+    var q = questions[step];
 
-    if(q===Q0) {
+    if(q === Q0) {
         data.isReserve = t;
         if(/はい|してる|予約/.test(t) && !/してない|いいえ/.test(t)) {
             questions.push(Q_TIME, Q1, Q2, Q3, Q5); 
@@ -407,85 +406,86 @@ async function answer(t){
             questions.push(Q1, Q_WAIT, Q2, Q3, Q5); 
         }
     }
-    else if(q===Q_TIME) data.reserveTime = t;
-    else if(q===Q1) data.purpose = t;
-    else if(q===Q2) data.name = t;
-    else if(q===Q3){
+    else if(q === Q_TIME) data.reserveTime = t;
+    else if(q === Q1) data.purpose = t;
+    else if(q === Q2) data.name = t;
+    else if(q === Q3) {
         data.isSub=t;
         if(isNotSub(t)){
             questions.splice(step+1,0,Q4);
         }
     }
-    else if(q===Q4) data.contact=t;
-    else if(q===Q5) data.id=t;
+    else if(q === Q4) data.contact = t;
+    else if(q === Q5) data.id = t;
 
     step++;
-    if(step<questions.length){ 
+    if(step < questions.length) { 
         if(questions[step] === Q_WAIT) {
             addBubble(Q_WAIT.text, "ai");
-            await speak(Q_WAIT.file, false);
-            step++;
-            setTimeout(ask, 800);
+            speak(Q_WAIT.file, false).then(function() {
+                step++;
+                setTimeout(ask, 800);
+            });
         } else {
             setTimeout(ask, 1000); 
         }
         return; 
     }
 
-    let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
+    var msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
-    await speak("finish_new.mp3", false);
-
-    await send();
-    await new Promise(r=>setTimeout(r,3000));
-    reset();
-}
-
-async function send(){
-    status.innerText="送信中…";
-    status.style.background="orange";
-    
-    let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
-    const memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
-    
-    await addDoc(collection(db,"visitors"),{
-        name:data.name,
-        table: tableNum + "テーブル",
-        content:data.purpose || "来店予約（" + data.reserveTime + "）", 
-        memo:memo,
-        createdAt:serverTimestamp(),
-        timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+    speak("finish_new.mp3", false).then(function() {
+        send().then(function() {
+            setTimeout(reset, 3000);
+        });
     });
-    status.innerText="受付完了";
-    status.style.background="#000";
 }
 
-function reset(){
-    step=0;
-    questions=[Q0];
-    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
-    chat.innerHTML="";
-    userContainer.innerHTML=""; 
-    startBtn.style.display="block";
-    action.style.display="none";
-    resetBtnUi.style.display="none"; 
+function send() {
+    status.innerText = "送信中…";
+    status.style.background = "orange";
+    
+    var reserveInfo = data.reserveTime ? "【予約】あり（" + data.reserveTime + "）" : "【予約】なし（当日来店）";
+    var memo = reserveInfo + " 【本人】" + data.isSub + " 【契約者連絡可否】" + (data.contact || "本人") + " 【本人確認書類】" + data.id;
+    
+    return db.collection("visitors").add({
+        name: data.name,
+        table: tableNum + "テーブル",
+        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
+        memo: memo,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        timeStr: new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
+    }).then(function() {
+        status.innerText = "受付完了";
+        status.style.background = "#000";
+    });
+}
+
+function reset() {
+    step = 0;
+    questions = [Q0];
+    data = {isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+    chat.innerHTML = "";
+    userContainer.innerHTML = ""; 
+    startBtn.style.display = "block";
+    action.style.display = "none";
+    resetBtnUi.style.display = "none"; 
     speakIndicator.classList.remove("active", "manual-prompt"); 
 }
 
-function addBubble(t,type){
-    const d=document.createElement("div");
-    d.className="bubble "+type;
+function addBubble(t, type) {
+    var d = document.createElement("div");
+    d.className = "bubble " + type;
     
     if(type === "ai"){
         chat.innerHTML = ""; 
-        d.innerText=t;
+        d.innerText = t;
         chat.appendChild(d);
-        /* ★修正：AIが喋り出しても、お客様が答えた言葉は消さずに画面に残す（ココを削除しました） */
         
         d.scrollTop = 0;
-        setTimeout(() => {
-            let scrollInterval = setInterval(() => {
+        setTimeout(function() {
+            var scrollInterval = setInterval(function() {
                 if(!d.isConnected || d.scrollTop + d.clientHeight >= d.scrollHeight){
                     clearInterval(scrollInterval);
                 } else {
@@ -501,30 +501,38 @@ function addBubble(t,type){
     }
 }
 
-function speak(fileName, auto=false){
-    return new Promise(res=>{
-        const video = document.getElementById("bg-video");
-        const audio = new Audio(fileName);
+function speak(fileName, auto) {
+    return new Promise(function(res) {
+        var video = document.getElementById("bg-video");
+        var audio = new Audio(fileName);
 
-        audio.onplay = () => video.play().catch(e => console.log("Video error:", e));
+        audio.onplay = function() {
+            var vp = video.play();
+            if (vp !== undefined) {
+                vp.catch(function(e) { console.log("Video error:", e); });
+            }
+        };
         
-        audio.onended = () => {
+        audio.onended = function() {
             video.pause();
             if(auto) setTimeout(toggleMic, 300);
             res();
         };
 
-        audio.onerror = (e) => {
+        audio.onerror = function(e) {
             alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
             console.error("Audio Load Error:", e);
             res(); 
         };
 
-        audio.play().catch(e => {
-            alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
-            console.error(e);
-            res();
-        });
+        var ap = audio.play();
+        if (ap !== undefined) {
+            ap.catch(function(e) {
+                alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
+                console.error(e);
+                res();
+            });
+        }
     });
 }
 </script>
