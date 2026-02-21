@@ -7,9 +7,6 @@
 <title>ドコモショップ AI受付</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <style>
 :root{ --primary:#cc0000; }
 
@@ -265,20 +262,6 @@ if(urlMatch) {
     tableNum = decodeURIComponent(urlMatch[1]);
 }
 
-var firebaseConfig = {
-    apiKey:"AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
-    authDomain:"oh-tai.firebaseapp.com",
-    projectId:"oh-tai",
-    storageBucket:"oh-tai.firebasestorage.app",
-    messagingSenderId:"1070284840120",
-    appId:"1:1070284840120:web:7f9735a1f1d2a5d815e84d"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
-
-db.settings({ experimentalForceLongPolling: true });
-
 var Q0 = { text: "本日は、ご来店ありがとうございます。受付ＡＩの、栄々愛子（ええあいこ）と申します。よろしくお願いいたします。さっそくですが、本日はご予約をされてのご来店でしょうか？", file: "q0_reserve.mp3" };
 var Q_TIME = { text: "ご予約のお時間は何時でしょうか？", file: "q_time.mp3" };
 var Q_WAIT = { text: "かしこまりました。のちほどスタッフより、本日のご案内可能なお時間をお伝えいたします。", file: "q_wait.mp3" };
@@ -305,8 +288,6 @@ var micBtn = document.getElementById("mic-btn");
 var status = document.getElementById("status-bar");
 var speakIndicator = document.getElementById("speak-indicator");
 var resetBtnUi = document.getElementById("reset-btn-ui"); 
-
-// ★修正：HTML側の電子音(playBeep)を完全に削除しました
 
 window.beginReception = function() {
     startBtn.style.display="none";
@@ -428,6 +409,7 @@ function answer(t) {
     });
 }
 
+// ★究極の修正：Firebaseのシステムを一切使わず、最も原始的で確実な方法(REST API)で直接送信する
 function send() {
     status.innerText = "送信中…";
     status.style.background = "orange";
@@ -440,17 +422,41 @@ function send() {
     var m = ("0" + d.getMinutes()).slice(-2);
     var timeString = h + ":" + m;
     
-    return db.collection("visitors").add({
-        name: data.name,
-        table: tableNum + "テーブル",
-        content: data.purpose || "来店予約（" + data.reserveTime + "）", 
-        memo: memo,
-        // ★修正：古い端末でフリーズの原因になるサーバータイムスタンプを廃止し、端末の時刻を保存
-        createdAt: d.getTime(), 
-        timeStr: timeString
-    }).then(function() {
-        status.innerText = "受付完了";
-        status.style.background = "#000";
+    // Firestoreに送るデータの形を整える
+    var payload = {
+        fields: {
+            name: { stringValue: data.name },
+            table: { stringValue: tableNum + "テーブル" },
+            content: { stringValue: data.purpose || "来店予約（" + data.reserveTime + "）" },
+            memo: { stringValue: memo },
+            createdAt: { timestampValue: d.toISOString() },
+            timeStr: { stringValue: timeString }
+        }
+    };
+
+    var projectId = "oh-tai";
+    var apiKey = "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak";
+    var url = "https://firestore.googleapis.com/v1/projects/" + projectId + "/databases/(default)/documents/visitors?key=" + apiKey;
+
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    status.innerText = "受付完了";
+                    status.style.background = "#000";
+                    resolve();
+                } else {
+                    reject(new Error("HTTPエラー: " + xhr.status));
+                }
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error("ネットワーク通信に失敗しました"));
+        };
+        xhr.send(JSON.stringify(payload));
     });
 }
 
