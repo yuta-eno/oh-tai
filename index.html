@@ -147,7 +147,7 @@
         }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
         
-        /* 来店者リスト卓No：フォントサイズを1.2remに調整（3文字収まるサイズ） */
+        /* ★修正：来店者リスト卓Noを全角3文字が1行に収まるように調整 */
         .v-table-big-box {
             background: #f0f0f0;
             border-right: 1px solid #999;
@@ -156,11 +156,13 @@
             justify-content: center;
             width: 55px;
             flex: none;
-            font-size: 1.2rem;
+            font-size: 0.95rem; /* サイズを縮小 */
             font-weight: 900;
             color: #000;
             line-height: 1.1;
             padding: 0 2px;
+            white-space: nowrap; /* 1行に強制 */
+            letter-spacing: -1px; /* 文字間隔を詰める */
         }
         .is-reserved .v-table-big-box { background: #fff9c4; }
         .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
@@ -396,8 +398,19 @@
         initializedVisitors = true;
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
+            
+            // ★修正：AI受付からの予約情報（memo内の【予約】あり（00:00））を自動解析して時間を抽出
+            let isRes = v.isReserved || (v.memo && v.memo.includes("【予約】あり"));
+            let resTime = v.reserveTime || "";
+            if (!v.isReserved && v.memo && v.memo.includes("【予約】あり（")) {
+                const match = v.memo.match(/【予約】あり（(.*?)）/);
+                if (match && match[1]) {
+                    resTime = match[1];
+                }
+            }
+
             const div = document.createElement('div');
-            div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
+            div.className = 'visitor-card' + (isRes ? " is-reserved" : "");
             div.innerHTML = `
                 <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                 <div class="v-info-box">
@@ -406,7 +419,7 @@
                         <span style="color:#d32f2f; font-weight:bold; font-size:1.0rem;">${v.timeStr}</span>
                         <span style="font-weight:900; font-size:1.2rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
                         <span style="color:#666; font-size:0.95rem;">${v.content}</span>
-                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.9rem; padding:2px 5px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                        ${isRes ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.9rem; padding:2px 5px; border-radius:3px; margin-left:auto;">予 ${resTime}</span>` : ''}
                     </div>
                     <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                 </div>
