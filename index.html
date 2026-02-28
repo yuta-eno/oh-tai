@@ -121,14 +121,41 @@
         .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
         
+        /* 来店者カード：テーブル番号巨大化のための調整 */
         .visitor-card { 
-            background: white; padding: 6px; 
+            background: white; padding: 0; /* paddingを0にしてテーブル枠を密着させる */
             border-left: 4px solid var(--primary-color); border-radius: 3px; 
             font-size: 0.75rem; position: relative; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; 
+            display: flex; align-items: stretch; /* 縦いっぱいに広げる */
+            overflow: hidden;
         }
-        .visitor-card.is-reserved { background: #fff9c4; border-left-color: #ff9800; }
+        .visitor-card.is-reserved { border-left-color: #ff9800; }
         
+        /* 巨大テーブル番号枠 */
+        .v-table-big-box {
+            background: #f0f0f0;
+            border-right: 2px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px; /* 横幅ぎりぎり */
+            flex: none;
+            font-size: 2.2rem; /* 文字サイズ巨大化 */
+            font-weight: 900;
+            color: #000;
+            line-height: 1;
+        }
+        /* 予約ありの時の背景色変更 */
+        .is-reserved .v-table-big-box { background: #fff9c4; }
+
+        .v-info-box {
+            flex: 1;
+            min-width: 0;
+            padding: 4px 6px;
+            position: relative;
+        }
+
         textarea.visitor-card-memo { 
             width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
             margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; 
@@ -139,6 +166,7 @@
             background: #ccc; color: #333; width: 18px; height: 16px; 
             padding: 0; font-size: 11px; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; cursor: pointer; 
+            z-index: 10;
         }
         
         .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
@@ -354,17 +382,19 @@
             const div = document.createElement('div');
             div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
             
-            // ★ リストの表示順変更：テーブル番号(枠付き) -> 時刻 -> 名前 -> 用件
+            // ★ テーブル番号を巨大な枠として一番左に配置、続けて時刻・名前・用件
             div.innerHTML = `
-                <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                <div style="display:flex; align-items:baseline; gap:6px; padding-right:16px; overflow:hidden; white-space:nowrap;">
-                    <span style="color:#444; font-size:0.75rem; font-weight:bold; background:#eee; border:1px solid #999; padding:0 4px; border-radius:2px; min-width:1.4rem; text-align:center;">${v.table?v.table:''}</span>
-                    <span style="color:#d32f2f; font-weight:bold; font-size:0.75rem;">${v.timeStr}</span>
-                    <span style="font-weight:900; font-size:0.85rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
-                    <span style="color:#666; font-size:0.65rem;">${v.content}</span>
-                    ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.6rem; padding:1px 3px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                <div class="v-table-big-box">${v.table ? v.table : ''}</div>
+                <div class="v-info-box">
+                    <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
+                    <div style="display:flex; align-items:baseline; gap:6px; padding-right:16px; overflow:hidden; white-space:nowrap;">
+                        <span style="color:#d32f2f; font-weight:bold; font-size:0.75rem;">${v.timeStr}</span>
+                        <span style="font-weight:900; font-size:0.85rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
+                        <span style="color:#666; font-size:0.65rem;">${v.content}</span>
+                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.6rem; padding:1px 3px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                    </div>
+                    <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                 </div>
-                <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
             `;
             listDiv.appendChild(div);
             document.getElementById(`del-v-${docSnap.id}`).addEventListener('click', () => deleteDoc(doc(db, "visitors", docSnap.id)));
@@ -440,13 +470,13 @@
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
         const name = document.getElementById(`c-name-${id}`).value;
-        const table = document.getElementById(`c-table-${id}`).value;
-        const schedule = document.getElementById(`c-schedule-${id}`).value;
-        const content = document.getElementById(`c-content-${id}`).value;
-        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
-        const dcard = document.getElementById(`c-dcard-${id}`).checked;
-        const memo = document.getElementById(`c-memo-${id}`).value;
-        const duration = document.getElementById(`timer-${id}`).innerText;
+        const table = document.getElementById('c-table-'+id).value;
+        const schedule = document.getElementById('c-schedule-'+id).value;
+        const content = document.getElementById('c-content-'+id).value;
+        const dbarai = document.getElementById('c-dbarai-'+id).checked;
+        const dcard = document.getElementById('c-dcard-'+id).checked;
+        const memo = document.getElementById('c-memo-'+id).value;
+        const duration = document.getElementById('timer-'+id).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
         const startTimeISO = card.dataset.startTime;
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
