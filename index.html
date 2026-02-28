@@ -57,16 +57,18 @@
             .grid-container { grid-template-columns: repeat(3, 1fr); } 
         }
 
+        /* 来店者リストセクションの強化 */
         .waiting-section { 
             flex: 0 0 22%; min-width: 240px; 
-            background: #e6e6e6; padding: 8px; border-radius: 4px; 
+            background: #e0e0e0; padding: 8px; border-radius: 4px; 
             position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
         }
 
-        h2 { font-size: 0.8rem; margin: 0 0 5px 0; border-bottom: 2px solid #999; padding-bottom: 2px; color: #555; }
+        h2 { font-size: 0.85rem; margin: 0 0 8px 0; padding: 6px 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
         
         .card { 
-            background: var(--card-bg); border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             padding: 5px; display: flex; flex-direction: column; gap: 2px; 
             border-top: 3px solid #bbb; transition: 0.2s; 
         }
@@ -81,6 +83,16 @@
             width: 100%; box-sizing: border-box; 
         }
         input:disabled { background-color: #e0e0e0; color: #555; }
+
+        /* テーブル番号を目立たせる */
+        input.c-table {
+            font-size: 1.1rem !important;
+            font-weight: 800 !important;
+            color: var(--primary-color);
+            border: 1px solid #ffcccc;
+            text-align: center;
+            background: #fffafa;
+        }
         
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
         
@@ -100,36 +112,33 @@
             margin-left: 2px; padding: 0;
         }
 
-        /* 終了予定の確定ボタン */
         .btn-schedule-ok {
             width: 22px; height: 22px; flex: none;
             background: #4CAF50; color: white; border: none; border-radius: 2px;
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
             padding: 0;
         }
-        .btn-schedule-ok:hover { background: #45a049; }
         
-        .visitor-form { background: #fff; padding: 5px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ccc; }
-        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 4px; font-size: 0.8rem;}
+        .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
+        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
         
         .visitor-card { 
-            background: white; padding: 5px; 
-            border-left: 3px solid var(--primary-color); border-radius: 3px; 
+            background: white; padding: 6px; 
+            border-left: 4px solid var(--primary-color); border-radius: 3px; 
             font-size: 0.75rem; position: relative; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 5px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; 
         }
-        /* 予約ありの場合の黄色ハイライト */
         .visitor-card.is-reserved { background: #fff9c4; border-left-color: #ff9800; }
         
         textarea.visitor-card-memo { 
             width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
-            margin-top: 2px; font-size: 0.75rem; border: 1px solid #ddd; 
+            margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; 
             border-radius: 2px; padding: 2px; background: #fdfdfd; 
         }
         .btn-delete-visitor { 
             position: absolute; top: 3px; right: 3px; 
-            background: #e0e0e0; color: #333; width: 16px; height: 16px; 
-            padding: 0; font-size: 10px; border-radius: 50%; 
+            background: #ccc; color: #333; width: 18px; height: 18px; 
+            padding: 0; font-size: 11px; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; cursor: pointer; 
         }
         
@@ -137,7 +146,6 @@
         table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
         .log-table th, .log-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
         .log-table th { background-color: #eee; white-space: nowrap; }
-        .log-table tr:nth-child(even) { background-color: #fcfcfc; }
         
         #setup-btn { background: #333; color: #fff; padding: 5px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none;}
     </style>
@@ -158,37 +166,35 @@
 
     <div class="main-dashboard">
         <div class="counters-section">
-            <h2>対応中カウンター（15枠）</h2>
             <div id="counter-grid" class="grid-container"></div>
         </div>
         <div class="waiting-section">
             <h2>未対応／来店者リスト</h2>
             <div class="visitor-form">
                 <div style="display:flex; gap:4px; align-items:flex-end;">
-                    <div class="input-group" style="flex:3; min-width:0;"><label>お名前</label><input type="text" id="v-name" placeholder="お客様名"></div>
-                    <div class="input-group" style="flex:1; min-width:0;"><label>テーブル</label><input type="text" id="v-table" placeholder="No."></div>
-                    <div class="input-group" style="flex:3; min-width:0;"><label>ご用件</label>
+                    <div class="input-group" style="flex:3; min-width:0;"><label>お名前</label><input type="text" id="v-name" placeholder="名"></div>
+                    <div class="input-group" style="flex:1.2; min-width:0;"><label>卓No</label><input type="text" id="v-table" placeholder="No"></div>
+                    <div class="input-group" style="flex:3; min-width:0;"><label>用件</label>
                         <select id="v-content" style="padding:2px 0;">
                             <option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                         </select>
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; align-items:center; margin-top:6px; margin-bottom:2px;">
-                    <label style="font-size:0.7rem; font-weight:bold; color:#666; cursor:pointer; display:flex; align-items:center; gap:2px;">
+                    <label style="font-size:0.7rem; font-weight:bold; color:#d84315; cursor:pointer; display:flex; align-items:center; gap:2px;">
                         <input type="checkbox" id="v-is-reserved" style="margin:0;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">
                         予約あり
                     </label>
-                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.75rem; padding:1px 2px;">
+                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.75rem; padding:1px 2px; width:80px;">
                 </div>
                 <div class="input-group"><label>備考</label><textarea id="v-memo" class="v-memo" placeholder="【予約】あり 等"></textarea></div>
-                <button class="btn-arrival" onclick="addVisitorToDb()">来店（受付）</button>
+                <button class="btn-arrival" onclick="addVisitorToDb()">来店登録（受付）</button>
             </div>
             <div id="waiting-list"></div>
         </div>
     </div>
     
     <div class="log-section">
-        <h2>本日完了分ログ (全件)</h2>
         <table class="log-table">
             <thead>
                 <tr>
@@ -211,7 +217,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ★★★ Firebaseの設定 ★★★
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
       authDomain: "oh-tai.firebaseapp.com",
@@ -220,58 +225,34 @@
       messagingSenderId: "1070284840120",
       appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
     };
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const TOTAL_COUNTERS = 15;
     let localLogs = [];
     let isSoundEnabled = false;
-
-    // --- ★スリープ防止（Wake Lock API）機能 ---
     let wakeLock = null;
+
     const requestWakeLock = async () => {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-                console.log('Wake Lock is active');
-            }
-        } catch (err) {
-            console.error(`${err.name}, ${err.message}`);
-        }
+        try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
+        } catch (err) { console.error(`${err.name}, ${err.message}`); }
     };
-    // タブが戻ってきたときに再取得
     document.addEventListener('visibilitychange', async () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') {
-            await requestWakeLock();
-        }
+        if (wakeLock !== null && document.visibilityState === 'visible') { await requestWakeLock(); }
     });
 
-    // --- 音声処理 ---
     let audioCtx = null;
-
     window.playFamima = function() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-
+        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        if (audioCtx.state === 'suspended') { audioCtx.resume(); }
         const t = audioCtx.currentTime;
         const gainNode = audioCtx.createGain();
         gainNode.connect(audioCtx.destination);
         gainNode.gain.value = 1.0; 
-
         const notes = [
-            { f: 740, t: 0.00, d: 0.25 }, // F#5
-            { f: 587, t: 0.25, d: 0.25 }, // D5
-            { f: 440, t: 0.50, d: 0.25 }, // A4
-            { f: 587, t: 0.75, d: 0.25 }, // D5
-            { f: 659, t: 1.00, d: 0.25 }, // E5
-            { f: 880, t: 1.25, d: 0.60 }  // A5 
+            { f: 740, t: 0.00, d: 0.25 }, { f: 587, t: 0.25, d: 0.25 }, { f: 440, t: 0.50, d: 0.25 },
+            { f: 587, t: 0.75, d: 0.25 }, { f: 659, t: 1.00, d: 0.25 }, { f: 880, t: 1.25, d: 0.60 }
         ];
-
         notes.forEach(note => {
             const osc = audioCtx.createOscillator();
             osc.type = "sine"; 
@@ -279,7 +260,6 @@
             osc.connect(gainNode);
             osc.start(t + note.t);
             osc.stop(t + note.t + note.d);
-            
             gainNode.gain.setValueAtTime(1.0, t + note.t); 
             gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
         });
@@ -288,23 +268,21 @@
     window.onload = function() {
         createCards();
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
-        requestWakeLock(); // ロード時に実行
+        requestWakeLock();
     };
 
     window.enableSound = function() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         audioCtx.resume().then(() => {
             window.playFamima();
             isSoundEnabled = true;
             const btn = document.getElementById('btn-enable-sound');
-            btn.innerText = "🔊 通知音ON (準備OK)";
+            btn.innerText = "🔊 通知音ON";
             btn.style.background = "#4CAF50";
             btn.style.animation = "none";
             setTimeout(() => { btn.style.display = 'none'; }, 3000);
         });
-        requestWakeLock(); // ボタン押下時にも実行
+        requestWakeLock();
     };
 
     function createCards() {
@@ -318,7 +296,7 @@
                     <label>担当者名</label>
                     <div style="display:flex; gap:2px;">
                         <input type="text" id="c-name-${i}" class="c-name" style="flex:1; min-width:0;">
-                        <button id="btn-clear-name-${i}" class="btn-clear-name" title="クリア">×</button>
+                        <button id="btn-clear-name-${i}" class="btn-clear-name">×</button>
                     </div>
                 </div>
                 <div style="display:flex; gap:5px;">
@@ -330,22 +308,15 @@
                         <label>終了予定</label>
                         <div style="display:flex; gap:2px;">
                             <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
-                            <button id="btn-schedule-ok-${i}" class="btn-schedule-ok" title="確定">✔</button>
+                            <button id="btn-schedule-ok-${i}" class="btn-schedule-ok">✔</button>
                         </div>
                     </div>
                 </div>
-
                 <div class="input-group"><label>応対内容</label><select id="c-content-${i}" class="c-content"><option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option></select></div>
-                
                 <div style="display:flex; gap:2px; margin:2px 0;">
-                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.6rem; font-weight:bold; color:#666; line-height:1;">
-                        <input type="checkbox" id="c-dbarai-${i}" style="width:12px; height:12px; margin:0; flex:none;">ｄ払い初回利用
-                    </label>
-                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.6rem; font-weight:bold; color:#666; line-height:1;">
-                        <input type="checkbox" id="c-dcard-${i}" style="width:12px; height:12px; margin:0; flex:none;">ｄカード即時利用
-                    </label>
+                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:11px; height:11px;">ｄ払初回</label>
+                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:11px; height:11px;">ｄカ即時</label>
                 </div>
-
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
                 <div class="btn-row">
@@ -355,7 +326,6 @@
                 </div>
             `;
             grid.appendChild(div);
-
             document.getElementById(`btn-start-${i}`).addEventListener('click', () => startService(i));
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
@@ -363,58 +333,33 @@
             document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
             document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            
-            document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => {
-                const inputEl = document.getElementById(`c-schedule-${i}`);
-                updateSchedule(i, inputEl);
-            });
+            document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => updateSchedule(i, document.getElementById(`c-schedule-${i}`)));
         }
     }
 
-    onSnapshot(collection(db, "counters"), (snapshot) => {
-        snapshot.forEach((docSnap) => {
-            updateCardUI(docSnap.id, docSnap.data());
-        });
-    });
+    onSnapshot(collection(db, "counters"), (snapshot) => { snapshot.forEach((docSnap) => { updateCardUI(docSnap.id, docSnap.data()); }); });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
     let initializedVisitors = false;
-
     onSnapshot(qVisitors, (snapshot) => {
         const listDiv = document.getElementById('waiting-list');
         listDiv.innerHTML = "";
-
         let hasNew = false;
-        snapshot.docChanges().forEach(change => {
-            if (initializedVisitors && change.type === "added") {
-                hasNew = true;
-            }
-        });
-        
-        if (hasNew && isSoundEnabled) {
-            window.playFamima();
-        }
-
+        snapshot.docChanges().forEach(change => { if (initializedVisitors && change.type === "added") { hasNew = true; } });
+        if (hasNew && isSoundEnabled) { window.playFamima(); }
         initializedVisitors = true;
-
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
             const div = document.createElement('div');
-            div.className = 'visitor-card';
-            
-            if (v.isReserved || (v.memo && v.memo.includes("【予約】あり"))) {
-                div.classList.add("is-reserved");
-            }
-
-            // リスト 1行表示化 + 「様」付与
+            div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
             div.innerHTML = `
                 <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                <div style="display:flex; align-items:baseline; gap:4px; padding-right:14px; overflow:hidden; white-space:nowrap;">
-                    <span style="color:var(--primary-color); font-weight:bold; font-size:0.7rem;">${v.timeStr}</span>
-                    <span style="font-weight:bold; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
-                    <span style="color:#666; font-size:0.65rem;">${v.table?'No:'+v.table:''}</span>
-                    <span style="color:#555; font-size:0.65rem;">${v.content}</span>
-                    ${v.isReserved ? `<span style="color:#d84315; font-weight:bold; font-size:0.65rem;">(予約${v.reserveTime ? ' '+v.reserveTime : ''})</span>` : ''}
+                <div style="display:flex; align-items:baseline; gap:6px; padding-right:16px; overflow:hidden; white-space:nowrap;">
+                    <span style="color:#d32f2f; font-weight:bold; font-size:0.75rem;">${v.timeStr}</span>
+                    <span style="font-weight:900; font-size:0.85rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
+                    <span style="color:#444; font-size:0.7rem; font-weight:bold; background:#eee; padding:0 3px; border-radius:2px;">${v.table?v.table:''}</span>
+                    <span style="color:#666; font-size:0.65rem;">${v.content}</span>
+                    ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.6rem; padding:1px 3px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
                 </div>
                 <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
             `;
@@ -426,16 +371,12 @@
 
     const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"));
     onSnapshot(qLogs, (snapshot) => {
-        const tbody = document.getElementById('log-table-body');
-        tbody.innerHTML = "";
-        localLogs = [];
+        const tbody = document.getElementById('log-table-body'); tbody.innerHTML = ""; localLogs = [];
         snapshot.forEach((docSnap) => {
-            const l = docSnap.data();
-            localLogs.push(l);
+            const l = docSnap.data(); localLogs.push(l);
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            const dbaraiStr = l.dbarai ? "〇" : "";
-            const dcardStr = l.dcard ? "〇" : "";
+            const dbaraiStr = l.dbarai ? "〇" : ""; const dcardStr = l.dcard ? "〇" : "";
             tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dbaraiStr}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dcardStr}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
@@ -443,22 +384,7 @@
 
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
-        const els = {
-            name: document.getElementById(`c-name-${id}`),
-            table: document.getElementById(`c-table-${id}`),
-            schedule: document.getElementById(`c-schedule-${id}`),
-            scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`),
-            content: document.getElementById(`c-content-${id}`),
-            dbarai: document.getElementById(`c-dbarai-${id}`),
-            dcard: document.getElementById(`c-dcard-${id}`),
-            memo: document.getElementById(`c-memo-${id}`),
-            start: document.getElementById(`btn-start-${id}`),
-            extend: document.getElementById(`btn-extend-${id}`),
-            end: document.getElementById(`btn-end-${id}`),
-            timer: document.getElementById(`timer-${id}`),
-            clearName: document.getElementById(`btn-clear-name-${id}`)
-        };
-
+        const els = { name: document.getElementById(`c-name-${id}`), table: document.getElementById(`c-table-${id}`), schedule: document.getElementById(`c-schedule-${id}`), scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`), content: document.getElementById(`c-content-${id}`), dbarai: document.getElementById(`c-dbarai-${id}`), dcard: document.getElementById(`c-dcard-${id}`), memo: document.getElementById(`c-memo-${id}`), start: document.getElementById(`btn-start-${id}`), extend: document.getElementById(`btn-extend-${id}`), end: document.getElementById(`btn-end-${id}`), timer: document.getElementById(`timer-${id}`), clearName: document.getElementById(`btn-clear-name-${id}`) };
         if(document.activeElement !== els.name) els.name.value = data.name || "";
         if(document.activeElement !== els.table) els.table.value = data.table || "";
         if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
@@ -466,24 +392,18 @@
         if(document.activeElement !== els.dbarai) els.dbarai.checked = data.dbarai || false;
         if(document.activeElement !== els.dcard) els.dcard.checked = data.dcard || false;
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
-
         els.schedule.disabled = !!data.scheduledEndTime;
         if (data.scheduledEndTime) { els.scheduleBtn.style.display = "none"; } else { els.scheduleBtn.style.display = "block"; }
-
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
-            card.classList.add('status-active');
-            if (data.status === 'extended') card.classList.add('status-extended');
-            els.name.disabled = true; els.clearName.disabled = true;
-            els.table.disabled = true; els.content.disabled = true;
+            card.classList.add('status-active'); if (data.status === 'extended') card.classList.add('status-extended');
+            els.name.disabled = true; els.clearName.disabled = true; els.table.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            els.name.disabled = false; els.clearName.disabled = false;
-            els.table.disabled = false; els.content.disabled = false;
+            els.name.disabled = false; els.clearName.disabled = false; els.table.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
-            els.timer.innerText = "00:00:00";
-            card.dataset.startTime = "";
+            els.timer.innerText = "00:00:00"; card.dataset.startTime = "";
         }
     }
 
@@ -495,46 +415,24 @@
         const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
         const dcard = document.getElementById(`c-dcard-${id}`).checked;
         const memo = document.getElementById(`c-memo-${id}`).value;
-        if(!name || !content) { alert("名前と内容を入力"); return; }
-        await updateDoc(doc(db, "counters", String(id)), {
-            status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard
-        });
+        if(!name || !content) { alert("担当者と内容を入力してください"); return; }
+        await updateDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard });
     };
-    
     window.clearName = async (id) => { await updateDoc(doc(db, "counters", String(id)), { name: "" }); };
-
     window.toggleExtend = async (id) => {
         const card = document.getElementById(`counter-card-${id}`);
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
-    
-    window.updateDbarai = async (id, checked) => {
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); }
-    };
-
-    window.updateDcard = async (id, checked) => {
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); }
-    };
-
-    window.updateMemo = async (id, text) => {
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) { await updateDoc(doc(db, "counters", String(id)), { memo: text }); }
-    };
-
+    window.updateDbarai = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); };
+    window.updateDcard = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); };
+    window.updateMemo = async (id, text) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { memo: text }); };
     window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value;
-        if (!val) return; 
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)){
-                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
-            }
-        } else { alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。"); }
+        const val = inputEl.value; if (!val) return; 
+        if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
+            if(confirm(`終了予定を【${val}】で確定しますか？`)) await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
+        } else { alert("開始ボタンを押すと保存されます"); }
     };
-
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
@@ -548,15 +446,9 @@
         const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
         const startTimeISO = card.dataset.startTime;
-        await addDoc(collection(db, "logs"), {
-            createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(),
-            name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard 
-        });
-        await updateDoc(doc(db, "counters", String(id)), {
-            status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
-        });
+        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
+        await updateDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false });
     };
-    
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value;
         const table = document.getElementById('v-table').value;
@@ -565,81 +457,46 @@
         const isReserved = document.getElementById('v-is-reserved').checked;
         const reserveTime = document.getElementById('v-reserve-time').value;
         if(!name) return;
-        await addDoc(collection(db, "visitors"), {
-            createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-            name, table, content, memo, isReserved, reserveTime
-        });
-        document.getElementById('v-name').value = '';
-        document.getElementById('v-table').value = '';
-        document.getElementById('v-memo').value = '';
-        document.getElementById('v-is-reserved').checked = false;
-        document.getElementById('v-reserve-time').value = '';
-        document.getElementById('v-reserve-time').style.display = 'none';
+        await addDoc(collection(db, "visitors"), { createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), name, table, content, memo, isReserved, reserveTime });
+        document.getElementById('v-name').value = ''; document.getElementById('v-table').value = ''; document.getElementById('v-memo').value = '';
+        document.getElementById('v-is-reserved').checked = false; document.getElementById('v-reserve-time').value = ''; document.getElementById('v-reserve-time').style.display = 'none';
     };
-
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            const dbaraiStr = l.dbarai ? "〇" : "";
-            const dcardStr = l.dcard ? "〇" : "";
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${dbaraiStr},${dcardStr},${l.duration},${l.isExtended}\n`;
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.dbarai?"〇":""},${l.dcard?"〇":""},${l.duration},${l.isExtended}\n`;
         });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob); link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
-
-    window.clearAllLogs = async () => {
-        if(!confirm("【警告】\nログを全削除します。よろしいですか？")) return;
-        const q = query(collection(db, "logs"));
-        const snapshot = await getDocs(q);
-        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(promises);
-        alert("削除しました");
+    window.clearAllLogs = async () => { if(!confirm("ログを全削除します。よろしいですか？")) return;
+        const q = query(collection(db, "logs")); const snapshot = await getDocs(q);
+        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref)); await Promise.all(promises); alert("削除しました");
     }
-
     setInterval(() => {
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const card = document.getElementById(`counter-card-${i}`);
             const startTimeStr = card.dataset.startTime;
-            if (startTimeStr) {
-                const diff = Date.now() - new Date(startTimeStr).getTime();
-                document.getElementById(`timer-${i}`).innerText = formatDuration(diff);
-            }
+            if (startTimeStr) { const diff = Date.now() - new Date(startTimeStr).getTime(); document.getElementById(`timer-${i}`).innerText = formatDuration(diff); }
         }
     }, 1000);
-
     function formatDuration(ms) {
-        if (ms < 0) ms = 0;
-        const totalSec = Math.floor(ms / 1000);
+        if (ms < 0) ms = 0; const totalSec = Math.floor(ms / 1000);
         const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
         const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
         const s = String(totalSec % 60).padStart(2, '0');
         return `${h}:${m}:${s}`;
     }
-
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します(初回のみ)")) return;
-        for(let i=1; i<=TOTAL_COUNTERS; i++){
-            await setDoc(doc(db, "counters", String(i)), {
-                id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false
-            });
-        }
-        alert("完了。リロードしてください。");
-        location.reload();
+        for(let i=1; i<=TOTAL_COUNTERS; i++){ await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false }); }
+        alert("完了。リロードしてください。"); location.reload();
     }
-    
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    getDoc(doc(db, "counters", "1")).then(docSnap => {
-        if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; }
-    });
-
+    getDoc(doc(db, "counters", "1")).then(docSnap => { if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; } });
 </script>
 </body>
 </html>
