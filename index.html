@@ -28,7 +28,6 @@
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
-        /* 音声許可ボタン（目立つように点滅） */
         #btn-enable-sound {
             background: #ff9800; color: white; border: none; padding: 5px 10px; 
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
@@ -68,7 +67,7 @@
         
         .card { 
             background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            padding: 5px; display: flex; flex-direction: column; gap: 2px; 
+            padding: 5px; display: flex; flex-direction: column; gap: 4px; 
             border-top: 3px solid #bbb; transition: 0.2s; 
         }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
@@ -83,36 +82,52 @@
         }
         input:disabled { background-color: #e0e0e0; color: #555; }
 
-        /* テーブル番号を目立たせる */
-        input.c-table {
-            font-size: 1.1rem !important;
-            font-weight: 800 !important;
+        /* スケッチに基づくテーブルパネル内レイアウト */
+        .card-top-layout {
+            display: flex;
+            gap: 4px;
+            height: 65px;
+        }
+        .table-side {
+            flex: 0 0 55px;
+            display: flex;
+            flex-direction: column;
+        }
+        .table-side input.c-table {
+            flex: 1;
+            font-size: 2rem !important;
+            font-weight: 900 !important;
             color: var(--primary-color);
-            border: 1px solid #ffcccc;
+            border: 2px solid #ffcccc;
             text-align: center;
             background: #fffafa;
+            padding: 0 !important;
         }
-        
+        .name-time-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
-        
         .timer-display { font-size: 1.1rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 1px 0; }
-        
         .btn-row { display: flex; gap: 2px; margin-top: 2px; }
-        button { flex: 1; padding: 3px 0; border: none; border-radius: 2px; cursor: pointer; color: white; font-weight: bold; font-size: 0.7rem; transition: opacity 0.2s; }
+        button { flex: 1; padding: 4px 0; border: none; border-radius: 2px; cursor: pointer; color: white; font-weight: bold; font-size: 0.75rem; transition: opacity 0.2s; }
         button:hover { opacity: 0.8; }
-        .btn-start { background: #1890ff; }
+        .btn-start { background: #1890ff; padding: 6px 0; font-size: 0.85rem; }
         .btn-end { background: #52c41a; display: none; }
         .btn-extend { background: #faad14; display: none; }
 
         .btn-clear-name {
-            width: 20px; height: 20px; flex: none; 
+            width: 18px; height: 18px; flex: none; 
             background: #999; color: white; border: none; border-radius: 2px; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
             margin-left: 2px; padding: 0;
         }
-
         .btn-schedule-ok {
-            width: 22px; height: 22px; flex: none;
+            width: 20px; height: 20px; flex: none;
             background: #4CAF50; color: white; border: none; border-radius: 2px;
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
             padding: 0;
@@ -121,40 +136,31 @@
         .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
         
-        /* 来店者カード：テーブル番号巨大化のための調整 */
         .visitor-card { 
-            background: white; padding: 0; /* paddingを0にしてテーブル枠を密着させる */
+            background: white; padding: 0;
             border-left: 4px solid var(--primary-color); border-radius: 3px; 
             font-size: 0.75rem; position: relative; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; 
-            display: flex; align-items: stretch; /* 縦いっぱいに広げる */
+            display: flex; align-items: stretch;
             overflow: hidden;
         }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
         
-        /* 巨大テーブル番号枠 */
         .v-table-big-box {
             background: #f0f0f0;
-            border-right: 2px solid #999;
+            border-right: 1px solid #999;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 50px; /* 横幅ぎりぎり */
+            width: 45px;
             flex: none;
-            font-size: 2.2rem; /* 文字サイズ巨大化 */
+            font-size: 2rem;
             font-weight: 900;
             color: #000;
             line-height: 1;
         }
-        /* 予約ありの時の背景色変更 */
         .is-reserved .v-table-big-box { background: #fff9c4; }
-
-        .v-info-box {
-            flex: 1;
-            min-width: 0;
-            padding: 4px 6px;
-            position: relative;
-        }
+        .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
 
         textarea.visitor-card-memo { 
             width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
@@ -244,7 +250,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ★★★ Firebaseの設定 ★★★
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
       authDomain: "oh-tai.firebaseapp.com",
@@ -253,7 +258,6 @@
       messagingSenderId: "1070284840120",
       appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
     };
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -320,32 +324,43 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
+            // スケッチに基づくカード内HTML
             div.innerHTML = `
-                <div class="input-group">
-                    <label>担当者名</label>
-                    <div style="display:flex; gap:2px;">
-                        <input type="text" id="c-name-${i}" class="c-name" style="flex:1; min-width:0;">
-                        <button id="btn-clear-name-${i}" class="btn-clear-name">×</button>
-                    </div>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <div class="input-group" style="flex:1;">
-                        <label>テーブルNo</label>
+                <div class="card-top-layout">
+                    <div class="table-side input-group">
+                        <label>卓No</label>
                         <input type="text" id="c-table-${i}" class="c-table">
                     </div>
-                    <div class="input-group" style="flex:1.2;">
-                        <label>終了予定</label>
-                        <div style="display:flex; gap:2px;">
-                            <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
-                            <button id="btn-schedule-ok-${i}" class="btn-schedule-ok">✔</button>
+                    <div class="name-time-side">
+                        <div class="input-group">
+                            <label>担当者名</label>
+                            <div style="display:flex; gap:2px;">
+                                <input type="text" id="c-name-${i}" class="c-name" style="flex:1; min-width:0;">
+                                <button id="btn-clear-name-${i}" class="btn-clear-name">×</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>終了予定</label>
+                            <div style="display:flex; gap:2px;">
+                                <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
+                                <button id="btn-schedule-ok-${i}" class="btn-schedule-ok">✔</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="input-group"><label>応対内容</label><select id="c-content-${i}" class="c-content"><option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option></select></div>
+
+                <div class="input-group">
+                    <label>応対内容</label>
+                    <select id="c-content-${i}" class="c-content">
+                        <option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
+                    </select>
+                </div>
+                
                 <div style="display:flex; gap:2px; margin:2px 0;">
                     <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:11px; height:11px;">ｄ払初回</label>
                     <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:11px; height:11px;">ｄカ即時</label>
                 </div>
+
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
                 <div class="btn-row">
@@ -381,8 +396,6 @@
             const v = docSnap.data();
             const div = document.createElement('div');
             div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
-            
-            // ★ テーブル番号を巨大な枠として一番左に配置、続けて時刻・名前・用件
             div.innerHTML = `
                 <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                 <div class="v-info-box">
