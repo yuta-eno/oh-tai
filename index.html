@@ -28,6 +28,7 @@
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         
+        /* 音声許可ボタン（目立つように点滅） */
         #btn-enable-sound {
             background: #ff9800; color: white; border: none; padding: 5px 10px; 
             border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
@@ -82,14 +83,14 @@
         }
         input:disabled { background-color: #e0e0e0; color: #555; }
 
-        /* スケッチに基づくテーブルパネル内レイアウト */
+        /* スケッチに基づくテーブルパネル内レイアウト：卓No幅を3文字分(95px)に拡大 */
         .card-top-layout {
             display: flex;
             gap: 4px;
             height: 65px;
         }
         .table-side {
-            flex: 0 0 55px;
+            flex: 0 0 95px; /* 55pxから95pxに拡大 */
             display: flex;
             flex-direction: column;
         }
@@ -146,15 +147,16 @@
         }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
         
+        /* 巨大テーブル番号枠：さらに幅を少し広げ視認性を強化 */
         .v-table-big-box {
             background: #f0f0f0;
             border-right: 1px solid #999;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 45px;
+            width: 55px; /* 45pxから55pxに拡大 */
             flex: none;
-            font-size: 2rem;
+            font-size: 2.4rem; /* 2remから拡大 */
             font-weight: 900;
             color: #000;
             line-height: 1;
@@ -250,6 +252,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // ★★★ Firebaseの設定 ★★★
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
       authDomain: "oh-tai.firebaseapp.com",
@@ -258,6 +261,7 @@
       messagingSenderId: "1070284840120",
       appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
     };
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -324,7 +328,6 @@
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
-            // スケッチに基づくカード内HTML
             div.innerHTML = `
                 <div class="card-top-layout">
                     <div class="table-side input-group">
@@ -400,11 +403,11 @@
                 <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                 <div class="v-info-box">
                     <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                    <div style="display:flex; align-items:baseline; gap:6px; padding-right:16px; overflow:hidden; white-space:nowrap;">
-                        <span style="color:#d32f2f; font-weight:bold; font-size:0.75rem;">${v.timeStr}</span>
-                        <span style="font-weight:900; font-size:0.85rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
-                        <span style="color:#666; font-size:0.65rem;">${v.content}</span>
-                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.6rem; padding:1px 3px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                    <div style="display:flex; align-items:baseline; gap:8px; padding-right:16px; overflow:hidden; white-space:nowrap;">
+                        <span style="color:#d32f2f; font-weight:bold; font-size:1.0rem;">${v.timeStr}</span>
+                        <span style="font-weight:900; font-size:1.2rem; color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
+                        <span style="color:#666; font-size:0.95rem;">${v.content}</span>
+                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:0.9rem; padding:2px 5px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
                     </div>
                     <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                 </div>
