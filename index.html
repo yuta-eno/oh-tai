@@ -27,13 +27,10 @@
         h2 { font-size: 0.85rem; margin: 0 0 8px 0; padding: 6px 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
         .card { background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 5px; display: flex; flex-direction: column; gap: 4px; border-top: 3px solid #bbb; transition: 0.2s; }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
-        /* 延長時は緑色で点滅 */
         .status-extended { border-top-color: #52c41a; background-color: #f6ffed; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(82, 196, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); } }
-        /* 1時間経過で黄色点滅 */
         .time-over-yellow { border-top-color: #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
-        /* 1.5時間経過で赤色点滅 */
         .time-over-red { border-top-color: #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); } }
 
@@ -41,9 +38,12 @@
         .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
         input, select, textarea { padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto; width: 100%; box-sizing: border-box; }
         input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
+        
+        /* 担当者名を目立たせる */
+        input.c-name { font-weight: 900 !important; color: #0056b3 !important; font-size: 0.9rem !important; }
+
         .card-top-layout { display: flex; gap: 4px; height: 65px; }
         .table-side { flex: 0 0 95px; display: flex; flex-direction: column; }
-        /* 卓Noのフォントサイズを小さくし枠に収める */
         .c-table-select { font-size: 0.95rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 !important; text-align: center; }
         .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
@@ -63,7 +63,7 @@
         .is-reserved .v-table-big-box { background: #fff9c4; }
         .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
         textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 2px; padding: 2px; background: #fdfdfd; }
-        .btn-delete-visitor { position: absolute; top: 3px; right: 3px; background: #ccc; color: #333; width: 18px; height: 18px; padding: 0; font-size: 11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
+        .btn-delete-visitor { position: absolute; top: 3px; right: 3px; background: #ccc; color: #333; width: 18px; height: 16px; padding: 0; font-size: 11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
         .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
         table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
         .log-table th, .log-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
@@ -357,12 +357,18 @@
     window.updateDbarai = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); };
     window.updateDcard = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); };
     window.updateMemo = async (id, text) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { memo: text }); };
+    
     window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value; if (!val) return; 
-        if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
-            if(confirm(`終了予定を【${val}】で確定しますか？\n※確定後は変更できません`)) { await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val }); } else { inputEl.value = ""; }
-        } else { alert("開始ボタンを押すと保存されます"); }
+        const val = inputEl.value; 
+        if (!val) return; 
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)) {
+                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
+            } else { inputEl.value = ""; }
+        } else { alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。"); }
     };
+    
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
@@ -374,6 +380,7 @@
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
         await updateDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false });
     };
+    
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value; const table = document.getElementById('v-table-num').value + document.getElementById('v-table-type').value;
         const content = document.getElementById('v-content').value; const memo = document.getElementById('v-memo').value;
@@ -383,6 +390,7 @@
         document.getElementById('v-name').value = ''; document.getElementById('v-table-num').value = ''; document.getElementById('v-table-type').value = 'T'; document.getElementById('v-memo').value = '';
         document.getElementById('v-is-reserved').checked = false; document.getElementById('v-reserve-time').value = ''; document.getElementById('v-reserve-time').style.display = 'none';
     };
+
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
@@ -394,12 +402,12 @@
         link.href = URL.createObjectURL(blob); link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
+
     window.clearAllLogs = async () => { if(!confirm("ログを全削除します。よろしいですか？")) return;
         const q = query(collection(db, "logs")); const snapshot = await getDocs(q);
         const promises = snapshot.docs.map(doc => deleteDoc(doc.ref)); await Promise.all(promises); alert("削除しました");
     }
 
-    // ★ タイマーの更新処理に、時間経過による黄色・赤色点滅のクラス付与ロジックを追加
     setInterval(() => {
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const card = document.getElementById(`counter-card-${i}`);
@@ -408,19 +416,10 @@
                 const diff = Date.now() - new Date(startTimeStr).getTime(); 
                 document.getElementById(`timer-${i}`).innerText = formatDuration(diff); 
                 
-                // 5400000ms = 1.5時間, 3600000ms = 1時間
-                if (diff >= 5400000) {
-                    card.classList.add('time-over-red');
-                    card.classList.remove('time-over-yellow');
-                } else if (diff >= 3600000) {
-                    card.classList.add('time-over-yellow');
-                    card.classList.remove('time-over-red');
-                } else {
-                    card.classList.remove('time-over-yellow', 'time-over-red');
-                }
-            } else {
-                card.classList.remove('time-over-yellow', 'time-over-red');
-            }
+                if (diff >= 5400000) { card.classList.add('time-over-red'); card.classList.remove('time-over-yellow'); } 
+                else if (diff >= 3600000) { card.classList.add('time-over-yellow'); card.classList.remove('time-over-red'); } 
+                else { card.classList.remove('time-over-yellow', 'time-over-red'); }
+            } else { card.classList.remove('time-over-yellow', 'time-over-red'); }
         }
     }, 1000);
 
