@@ -81,28 +81,28 @@
             padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
             width: 100%; box-sizing: border-box; 
         }
-        input:disabled { background-color: #e0e0e0; color: #555; }
+        input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
 
-        /* スケッチに基づくテーブルパネル内レイアウト：卓No幅を3文字分(95px)に拡大 */
+        /* レイアウト調整 */
         .card-top-layout {
             display: flex;
             gap: 4px;
             height: 65px;
         }
         .table-side {
-            flex: 0 0 95px; /* 55pxから95pxに拡大 */
+            flex: 0 0 95px; /* 卓No欄の幅をキープ */
             display: flex;
             flex-direction: column;
         }
-        .table-side input.c-table {
-            flex: 1;
-            font-size: clamp(1.1rem, 2vw, 1.4rem) !important;
+        /* ドラムロール用セレクトボックスのスタイル */
+        .c-table-select {
+            font-size: 1.3rem !important;
             font-weight: 900 !important;
             color: var(--primary-color);
             border: 2px solid #ffcccc;
-            text-align: center;
             background: #fffafa;
-            padding: 0 !important;
+            padding: 0 2px !important;
+            text-align: center;
         }
         .name-time-side {
             flex: 1;
@@ -127,12 +127,6 @@
             cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
             margin-left: 2px; padding: 0;
         }
-        .btn-schedule-ok {
-            width: 20px; height: 20px; flex: none;
-            background: #4CAF50; color: white; border: none; border-radius: 2px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
-            padding: 0;
-        }
         
         .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
@@ -147,20 +141,20 @@
         }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
         
-        /* 来店者リスト卓No：画面幅に応じた可変フォントサイズに変更 */
         .v-table-big-box {
             background: #f0f0f0;
             border-right: 1px solid #999;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: clamp(40px, 20%, 55px);
+            width: 55px; 
             flex: none;
-            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+            font-size: 1.4rem;
             font-weight: 900;
             color: #000;
             line-height: 1.1;
             padding: 0 2px;
+            text-align: center;
         }
         .is-reserved .v-table-big-box { background: #fff9c4; }
         .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
@@ -172,7 +166,7 @@
         }
         .btn-delete-visitor { 
             position: absolute; top: 3px; right: 3px; 
-            background: #ccc; color: #333; width: 18px; height: 16px; 
+            background: #ccc; color: #333; width: 18px; height: 18px; 
             padding: 0; font-size: 11px; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; cursor: pointer; 
             z-index: 10;
@@ -185,7 +179,7 @@
         
         #setup-btn { background: #333; color: #fff; padding: 5px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none;}
     </style>
-</head>
+    </head>
 <body>
     <header>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -209,7 +203,18 @@
             <div class="visitor-form">
                 <div style="display:flex; gap:4px; align-items:flex-end;">
                     <div class="input-group" style="flex:3; min-width:0;"><label>お名前</label><input type="text" id="v-name" placeholder="名"></div>
-                    <div class="input-group" style="flex:1.2; min-width:0;"><label>卓No</label><input type="text" id="v-table" placeholder="No"></div>
+                    <div class="input-group" style="flex:1.8; min-width:0;">
+                        <label>卓No</label>
+                        <div style="display:flex; gap:2px;">
+                            <select id="v-table-num" style="padding:2px 0; flex:1.5;">
+                                <option value=""></option>
+                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
+                            </select>
+                            <select id="v-table-type" style="padding:2px 0; flex:1;">
+                                <option value="T">T</option><option value="C">C</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="input-group" style="flex:3; min-width:0;"><label>用件</label>
                         <select id="v-content" style="padding:2px 0;">
                             <option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
@@ -325,6 +330,12 @@
 
     function createCards() {
         const grid = document.getElementById('counter-grid');
+        
+        let numOpts = '<option value=""></option>';
+        for(let n=1; n<=20; n++) {
+            numOpts += `<option value="${n}">${n}</option>`;
+        }
+
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const div = document.createElement('div');
             div.className = 'card counter-card';
@@ -333,7 +344,10 @@
                 <div class="card-top-layout">
                     <div class="table-side input-group">
                         <label>卓No</label>
-                        <input type="text" id="c-table-${i}" class="c-table">
+                        <div style="display:flex; gap:2px; height:100%;">
+                            <select id="c-table-num-${i}" class="c-table-select" style="flex:1.5;">${numOpts}</select>
+                            <select id="c-table-type-${i}" class="c-table-select" style="flex:1;"><option value="T">T</option><option value="C">C</option></select>
+                        </div>
                     </div>
                     <div class="name-time-side">
                         <div class="input-group">
@@ -347,7 +361,6 @@
                             <label>終了予定</label>
                             <div style="display:flex; gap:2px;">
                                 <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
-                                <button id="btn-schedule-ok-${i}" class="btn-schedule-ok">✔</button>
                             </div>
                         </div>
                     </div>
@@ -381,7 +394,9 @@
             document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
             document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => updateSchedule(i, document.getElementById(`c-schedule-${i}`)));
+            
+            // iPad対応: changeイベント（iOSの「設定/Done」ボタン押下時）で確定処理を呼び出す
+            document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target));
         }
     }
 
@@ -401,16 +416,16 @@
             const div = document.createElement('div');
             div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
             
-            /* 受付後パネルのフォントサイズをclampで動的に変更 */
+            // ★ 文字潰れ防止のため、flex-wrapを追加し、はみ出すテキストは折り返す設定に変更
             div.innerHTML = `
                 <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                 <div class="v-info-box">
                     <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                    <div style="display:flex; align-items:baseline; gap:clamp(4px, 1vw, 8px); padding-right:16px; overflow:hidden; white-space:nowrap;">
-                        <span style="color:#d32f2f; font-weight:bold; font-size:clamp(0.75rem, 1.8vw, 1.0rem);">${v.timeStr}</span>
-                        <span style="font-weight:900; font-size:clamp(0.9rem, 2.2vw, 1.2rem); color:#000; overflow:hidden; text-overflow:ellipsis;">${v.name} 様</span>
-                        <span style="color:#666; font-size:clamp(0.65rem, 1.5vw, 0.95rem);">${v.content}</span>
-                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:clamp(0.65rem, 1.5vw, 0.9rem); padding:2px 5px; border-radius:3px; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                    <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:clamp(4px, 1vw, 8px); padding-right:16px; line-height:1.3;">
+                        <span style="color:#d32f2f; font-weight:bold; font-size:clamp(0.75rem, 1.8vw, 1.0rem); white-space:nowrap;">${v.timeStr}</span>
+                        <span style="font-weight:900; font-size:clamp(0.9rem, 2.2vw, 1.2rem); color:#000; word-break:break-word;">${v.name} 様</span>
+                        <span style="color:#666; font-size:clamp(0.65rem, 1.5vw, 0.95rem); word-break:break-word;">${v.content}</span>
+                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:clamp(0.65rem, 1.5vw, 0.9rem); padding:2px 5px; border-radius:3px; white-space:nowrap; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
                     </div>
                     <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                 </div>
@@ -436,24 +451,61 @@
 
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
-        const els = { name: document.getElementById(`c-name-${id}`), table: document.getElementById(`c-table-${id}`), schedule: document.getElementById(`c-schedule-${id}`), scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`), content: document.getElementById(`c-content-${id}`), dbarai: document.getElementById(`c-dbarai-${id}`), dcard: document.getElementById(`c-dcard-${id}`), memo: document.getElementById(`c-memo-${id}`), start: document.getElementById(`btn-start-${id}`), extend: document.getElementById(`btn-extend-${id}`), end: document.getElementById(`btn-end-${id}`), timer: document.getElementById(`timer-${id}`), clearName: document.getElementById(`btn-clear-name-${id}`) };
+        const els = { 
+            name: document.getElementById(`c-name-${id}`), 
+            tableNum: document.getElementById(`c-table-num-${id}`), 
+            tableType: document.getElementById(`c-table-type-${id}`), 
+            schedule: document.getElementById(`c-schedule-${id}`), 
+            content: document.getElementById(`c-content-${id}`), 
+            dbarai: document.getElementById(`c-dbarai-${id}`), 
+            dcard: document.getElementById(`c-dcard-${id}`), 
+            memo: document.getElementById(`c-memo-${id}`), 
+            start: document.getElementById(`btn-start-${id}`), 
+            extend: document.getElementById(`btn-extend-${id}`), 
+            end: document.getElementById(`btn-end-${id}`), 
+            timer: document.getElementById(`timer-${id}`), 
+            clearName: document.getElementById(`btn-clear-name-${id}`) 
+        };
+        
+        let t_val = data.table || "";
+        let t_num = "", t_type = "T";
+        if(t_val) {
+            let match = t_val.match(/^(\d+)([CT]?)$/);
+            if(match) {
+                t_num = match[1];
+                if(match[2]) t_type = match[2];
+            } else if(t_val.includes('T')) {
+                t_num = t_val.replace('T',''); t_type = 'T';
+            } else if(t_val.includes('C')) {
+                t_num = t_val.replace('C',''); t_type = 'C';
+            } else {
+                t_num = t_val;
+            }
+        }
+
         if(document.activeElement !== els.name) els.name.value = data.name || "";
-        if(document.activeElement !== els.table) els.table.value = data.table || "";
+        if(document.activeElement !== els.tableNum) els.tableNum.value = t_num;
+        if(document.activeElement !== els.tableType) els.tableType.value = t_type;
         if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
         if(document.activeElement !== els.content) els.content.value = data.content || "";
         if(document.activeElement !== els.dbarai) els.dbarai.checked = data.dbarai || false;
         if(document.activeElement !== els.dcard) els.dcard.checked = data.dcard || false;
         if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
+        
         els.schedule.disabled = !!data.scheduledEndTime;
-        if (data.scheduledEndTime) { els.scheduleBtn.style.display = "none"; } else { els.scheduleBtn.style.display = "block"; }
+        
         card.classList.remove('status-active', 'status-extended');
         if (data.status === 'active' || data.status === 'extended') {
             card.classList.add('status-active'); if (data.status === 'extended') card.classList.add('status-extended');
-            els.name.disabled = true; els.clearName.disabled = true; els.table.disabled = true; els.content.disabled = true;
+            els.name.disabled = true; els.clearName.disabled = true; 
+            els.tableNum.disabled = true; els.tableType.disabled = true; 
+            els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            els.name.disabled = false; els.clearName.disabled = false; els.table.disabled = false; els.content.disabled = false;
+            els.name.disabled = false; els.clearName.disabled = false; 
+            els.tableNum.disabled = false; els.tableType.disabled = false; 
+            els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00"; card.dataset.startTime = "";
         }
@@ -462,7 +514,9 @@
     window.startService = async (id) => {
         const name = document.getElementById(`c-name-${id}`).value;
         const content = document.getElementById(`c-content-${id}`).value;
-        const table = document.getElementById(`c-table-${id}`).value;
+        const tableNum = document.getElementById(`c-table-num-${id}`).value;
+        const tableType = document.getElementById(`c-table-type-${id}`).value;
+        const table = tableNum ? tableNum + tableType : "";
         const schedule = document.getElementById(`c-schedule-${id}`).value;
         const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
         const dcard = document.getElementById(`c-dcard-${id}`).checked;
@@ -470,50 +524,71 @@
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
         await updateDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard });
     };
+    
     window.clearName = async (id) => { await updateDoc(doc(db, "counters", String(id)), { name: "" }); };
+    
     window.toggleExtend = async (id) => {
         const card = document.getElementById(`counter-card-${id}`);
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
+    
     window.updateDbarai = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); };
     window.updateDcard = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); };
     window.updateMemo = async (id, text) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { memo: text }); };
+    
     window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value; if (!val) return; 
-        if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
-            if(confirm(`終了予定を【${val}】で確定しますか？`)) await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
-        } else { alert("開始ボタンを押すと保存されます"); }
+        const val = inputEl.value; 
+        if (!val) return; 
+        const card = document.getElementById(`counter-card-${id}`);
+        if (card.classList.contains('status-active')) {
+            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)) {
+                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
+            } else {
+                inputEl.value = ""; // キャンセルの場合は空に戻す
+            }
+        } else { 
+            alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。"); 
+        }
     };
-        window.endService = async (id) => {
+    
+    window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
         const name = document.getElementById(`c-name-${id}`).value;
-        const table = document.getElementById('c-table-'+id).value;
-        const schedule = document.getElementById('c-schedule-'+id).value;
-        const content = document.getElementById('c-content-'+id).value;
-        const dbarai = document.getElementById('c-dbarai-'+id).checked;
-        const dcard = document.getElementById('c-dcard-'+id).checked;
-        const memo = document.getElementById('c-memo-'+id).value;
-        const duration = document.getElementById('timer-'+id).innerText;
+        const tableNum = document.getElementById(`c-table-num-${id}`).value;
+        const tableType = document.getElementById(`c-table-type-${id}`).value;
+        const table = tableNum ? tableNum + tableType : "";
+        const schedule = document.getElementById(`c-schedule-${id}`).value;
+        const content = document.getElementById(`c-content-${id}`).value;
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
+        const dcard = document.getElementById(`c-dcard-${id}`).checked;
+        const memo = document.getElementById(`c-memo-${id}`).value;
+        const duration = document.getElementById(`timer-${id}`).innerText;
         const isExtended = card.classList.contains('status-extended') ? "あり" : "";
         const startTimeISO = card.dataset.startTime;
-        
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
         await updateDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false });
     };
-
+    
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value;
-        const table = document.getElementById('v-table').value;
+        const vNum = document.getElementById('v-table-num').value;
+        const vType = document.getElementById('v-table-type').value;
+        const table = vNum ? vNum + vType : "";
         const content = document.getElementById('v-content').value;
         const memo = document.getElementById('v-memo').value;
         const isReserved = document.getElementById('v-is-reserved').checked;
         const reserveTime = document.getElementById('v-reserve-time').value;
         if(!name) return;
         await addDoc(collection(db, "visitors"), { createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), name, table, content, memo, isReserved, reserveTime });
-        document.getElementById('v-name').value = ''; document.getElementById('v-table').value = ''; document.getElementById('v-memo').value = '';
-        document.getElementById('v-is-reserved').checked = false; document.getElementById('v-reserve-time').value = ''; document.getElementById('v-reserve-time').style.display = 'none';
+        document.getElementById('v-name').value = ''; 
+        document.getElementById('v-table-num').value = ''; 
+        document.getElementById('v-table-type').value = 'T'; 
+        document.getElementById('v-memo').value = '';
+        document.getElementById('v-is-reserved').checked = false; 
+        document.getElementById('v-reserve-time').value = ''; 
+        document.getElementById('v-reserve-time').style.display = 'none';
     };
 
     window.exportLogsToCSV = () => {
