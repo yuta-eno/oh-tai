@@ -6,112 +6,46 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    
     <title>Ｒ１２２管理ボード</title>
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
-        
-        header { 
-            background: var(--primary-color); color: white; 
-            padding: 4px 15px; 
-            display: flex; justify-content: space-between; align-items: center; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-        }
+        header { background: var(--primary-color); color: white; padding: 4px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { margin: 0; font-size: 0.9rem; font-weight: normal; }
-
         .header-actions { display: flex; gap: 8px; }
-        .header-btn {
-            background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); 
-            padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; transition: 0.2s;
-        }
+        .header-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
         .header-btn:hover { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
-        
-        /* 音声許可ボタン（目立つように点滅） */
-        #btn-enable-sound {
-            background: #ff9800; color: white; border: none; padding: 5px 10px; 
-            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem;
-            display: none; 
-            animation: flash 2s infinite;
-            border: 2px solid white;
-        }
+        #btn-enable-sound { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; display: none; animation: flash 2s infinite; border: 2px solid white; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-
-        .main-dashboard { 
-            display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; 
-        }
-        
+        .main-dashboard { display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; }
         .counters-section { flex: 1 1 auto; width: 78%; }
-        
-        .grid-container { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 6px; 
-        }
-
+        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
         @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 900px) { 
-            .main-dashboard { flex-wrap: wrap; } 
-            .counters-section { width: 100%; }
-            .grid-container { grid-template-columns: repeat(3, 1fr); } 
-        }
-
-        .waiting-section { 
-            flex: 0 0 22%; min-width: 240px; 
-            background: #e0e0e0; padding: 8px; border-radius: 4px; 
-            position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; 
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-        }
-
+        @media (max-width: 900px) { .main-dashboard { flex-wrap: wrap; } .counters-section { width: 100%; } .grid-container { grid-template-columns: repeat(3, 1fr); } }
+        .waiting-section { flex: 0 0 22%; min-width: 240px; background: #e0e0e0; padding: 8px; border-radius: 4px; position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
         h2 { font-size: 0.85rem; margin: 0 0 8px 0; padding: 6px 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
-        
-        .card { 
-            background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            padding: 5px; display: flex; flex-direction: column; gap: 4px; 
-            border-top: 3px solid #bbb; transition: 0.2s; 
-        }
+        .card { background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 5px; display: flex; flex-direction: column; gap: 4px; border-top: 3px solid #bbb; transition: 0.2s; }
         .status-active { border-top-color: #1890ff; background-color: #f0faff; }
-        .status-extended { border-top-color: #faad14; background-color: #fffbe6; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
-        
+        /* 延長時は緑色で点滅 */
+        .status-extended { border-top-color: #52c41a; background-color: #f6ffed; animation: pulse-green 2s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(82, 196, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); } }
+        /* 1時間経過で黄色点滅 */
+        .time-over-yellow { border-top-color: #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
+        @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
+        /* 1.5時間経過で赤色点滅 */
+        .time-over-red { border-top-color: #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); } }
+
         .input-group { display: flex; flex-direction: column; gap: 0; }
         .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
-        input, select, textarea { 
-            padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto;
-            width: 100%; box-sizing: border-box; 
-        }
+        input, select, textarea { padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto; width: 100%; box-sizing: border-box; }
         input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
-
-        /* レイアウト調整 */
-        .card-top-layout {
-            display: flex;
-            gap: 4px;
-            height: 65px;
-        }
-        .table-side {
-            flex: 0 0 95px; /* 卓No欄の幅をキープ */
-            display: flex;
-            flex-direction: column;
-        }
-        /* ドラムロール用セレクトボックスのスタイル */
-        .c-table-select {
-            font-size: 1.3rem !important;
-            font-weight: 900 !important;
-            color: var(--primary-color);
-            border: 2px solid #ffcccc;
-            background: #fffafa;
-            padding: 0 2px !important;
-            text-align: center;
-        }
-        .name-time-side {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-
+        .card-top-layout { display: flex; gap: 4px; height: 65px; }
+        .table-side { flex: 0 0 95px; display: flex; flex-direction: column; }
+        /* 卓Noのフォントサイズを小さくし枠に収める */
+        .c-table-select { font-size: 0.95rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 !important; text-align: center; }
+        .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
         .timer-display { font-size: 1.1rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 1px 0; }
         .btn-row { display: flex; gap: 2px; margin-top: 2px; }
@@ -120,66 +54,23 @@
         .btn-start { background: #1890ff; padding: 6px 0; font-size: 0.85rem; }
         .btn-end { background: #52c41a; display: none; }
         .btn-extend { background: #faad14; display: none; }
-
-        .btn-clear-name {
-            width: 18px; height: 18px; flex: none; 
-            background: #999; color: white; border: none; border-radius: 2px; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
-            margin-left: 2px; padding: 0;
-        }
-        
+        .btn-clear-name { width: 18px; height: 18px; flex: none; background: #999; color: white; border: none; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; margin-left: 2px; padding: 0; }
         .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
-        
-        .visitor-card { 
-            background: white; padding: 0;
-            border-left: 4px solid var(--primary-color); border-radius: 3px; 
-            font-size: 0.75rem; position: relative; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; 
-            display: flex; align-items: stretch;
-            overflow: hidden;
-        }
+        .visitor-card { background: white; padding: 0; border-left: 4px solid var(--primary-color); border-radius: 3px; font-size: 0.75rem; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; display: flex; align-items: stretch; overflow: hidden; }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
-        
-        .v-table-big-box {
-            background: #f0f0f0;
-            border-right: 1px solid #999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 55px; 
-            flex: none;
-            font-size: 1.4rem;
-            font-weight: 900;
-            color: #000;
-            line-height: 1.1;
-            padding: 0 2px;
-            text-align: center;
-        }
+        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(40px, 20%, 55px); flex: none; font-size: clamp(0.9rem, 2.5vw, 1.2rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; }
         .is-reserved .v-table-big-box { background: #fff9c4; }
         .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
-
-        textarea.visitor-card-memo { 
-            width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; 
-            margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; 
-            border-radius: 2px; padding: 2px; background: #fdfdfd; 
-        }
-        .btn-delete-visitor { 
-            position: absolute; top: 3px; right: 3px; 
-            background: #ccc; color: #333; width: 18px; height: 18px; 
-            padding: 0; font-size: 11px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; cursor: pointer; 
-            z-index: 10;
-        }
-        
+        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 2px; padding: 2px; background: #fdfdfd; }
+        .btn-delete-visitor { position: absolute; top: 3px; right: 3px; background: #ccc; color: #333; width: 18px; height: 18px; padding: 0; font-size: 11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
         .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
         table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
         .log-table th, .log-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
         .log-table th { background-color: #eee; white-space: nowrap; }
-        
         #setup-btn { background: #333; color: #fff; padding: 5px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none;}
     </style>
-    </head>
+</head>
 <body>
     <header>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -187,8 +78,8 @@
             <button id="btn-enable-sound" onclick="enableSound()">🔊 音をオンにする</button>
             <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
         </div>
-        
         <div class="header-actions">
+            <button class="header-btn" onclick="location.reload()">🔄 リロード</button>
             <button class="header-btn btn-delete-log" onclick="clearAllLogs()">🗑️ ログ削除</button>
             <button class="header-btn" onclick="exportLogsToCSV()">📥 CSV出力</button>
         </div>
@@ -206,11 +97,11 @@
                     <div class="input-group" style="flex:1.8; min-width:0;">
                         <label>卓No</label>
                         <div style="display:flex; gap:2px;">
-                            <select id="v-table-num" style="padding:2px 0; flex:1.5;">
+                            <select id="v-table-num" style="padding:0; flex:1.5; font-size:0.9rem;">
                                 <option value=""></option>
                                 <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
                             </select>
-                            <select id="v-table-type" style="padding:2px 0; flex:1;">
+                            <select id="v-table-type" style="padding:0; flex:1; font-size:0.9rem;">
                                 <option value="T">T</option><option value="C">C</option>
                             </select>
                         </div>
@@ -223,8 +114,7 @@
                 </div>
                 <div style="display:flex; gap:10px; align-items:center; margin-top:6px; margin-bottom:2px;">
                     <label style="font-size:0.7rem; font-weight:bold; color:#d84315; cursor:pointer; display:flex; align-items:center; gap:2px;">
-                        <input type="checkbox" id="v-is-reserved" style="margin:0;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">
-                        予約あり
+                        <input type="checkbox" id="v-is-reserved" style="margin:0;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">予約あり
                     </label>
                     <input type="time" id="v-reserve-time" style="display:none; font-size:0.75rem; padding:1px 2px; width:80px;">
                 </div>
@@ -239,15 +129,7 @@
         <table class="log-table">
             <thead>
                 <tr>
-                    <th width="60">開始時刻</th>
-                    <th width="60">終了時刻</th>
-                    <th width="80">担当者</th>
-                    <th width="30">No.</th>
-                    <th width="60">予定</th>
-                    <th width="90">用件</th>
-                    <th>備考</th>
-                    <th width="50">d払い</th> <th width="50">dカード</th> <th width="60">所要時間</th>
-                    <th width="40">延長</th>
+                    <th width="60">開始時刻</th><th width="60">終了時刻</th><th width="80">担当者</th><th width="30">No.</th><th width="60">予定</th><th width="90">用件</th><th>備考</th><th width="50">d払い</th><th width="50">dカード</th><th width="60">所要時間</th><th width="40">延長</th>
                 </tr>
             </thead>
             <tbody id="log-table-body"></tbody>
@@ -258,7 +140,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ★★★ Firebaseの設定 ★★★
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
       authDomain: "oh-tai.firebaseapp.com",
@@ -267,7 +148,6 @@
       messagingSenderId: "1070284840120",
       appId: "1:1070284840120:web:7f9735a1f1d2a5d815e84d"
     };
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -292,19 +172,12 @@
         const gainNode = audioCtx.createGain();
         gainNode.connect(audioCtx.destination);
         gainNode.gain.value = 1.0; 
-        const notes = [
-            { f: 740, t: 0.00, d: 0.25 }, { f: 587, t: 0.25, d: 0.25 }, { f: 440, t: 0.50, d: 0.25 },
-            { f: 587, t: 0.75, d: 0.25 }, { f: 659, t: 1.00, d: 0.25 }, { f: 880, t: 1.25, d: 0.60 }
-        ];
+        const notes = [ { f: 740, t: 0.00, d: 0.25 }, { f: 587, t: 0.25, d: 0.25 }, { f: 440, t: 0.50, d: 0.25 }, { f: 587, t: 0.75, d: 0.25 }, { f: 659, t: 1.00, d: 0.25 }, { f: 880, t: 1.25, d: 0.60 } ];
         notes.forEach(note => {
             const osc = audioCtx.createOscillator();
-            osc.type = "sine"; 
-            osc.frequency.setValueAtTime(note.f, t + note.t);
-            osc.connect(gainNode);
-            osc.start(t + note.t);
-            osc.stop(t + note.t + note.d);
-            gainNode.gain.setValueAtTime(1.0, t + note.t); 
-            gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
+            osc.type = "sine"; osc.frequency.setValueAtTime(note.f, t + note.t);
+            osc.connect(gainNode); osc.start(t + note.t); osc.stop(t + note.t + note.d);
+            gainNode.gain.setValueAtTime(1.0, t + note.t); gainNode.gain.exponentialRampToValueAtTime(0.001, t + note.t + note.d - 0.05);
         });
     }
 
@@ -317,12 +190,9 @@
     window.enableSound = function() {
         if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         audioCtx.resume().then(() => {
-            window.playFamima();
-            isSoundEnabled = true;
+            window.playFamima(); isSoundEnabled = true;
             const btn = document.getElementById('btn-enable-sound');
-            btn.innerText = "🔊 通知音ON";
-            btn.style.background = "#4CAF50";
-            btn.style.animation = "none";
+            btn.innerText = "🔊 通知音ON"; btn.style.background = "#4CAF50"; btn.style.animation = "none";
             setTimeout(() => { btn.style.display = 'none'; }, 3000);
         });
         requestWakeLock();
@@ -330,11 +200,8 @@
 
     function createCards() {
         const grid = document.getElementById('counter-grid');
-        
         let numOpts = '<option value=""></option>';
-        for(let n=1; n<=20; n++) {
-            numOpts += `<option value="${n}">${n}</option>`;
-        }
+        for(let n=1; n<=20; n++) { numOpts += `<option value="${n}">${n}</option>`; }
 
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const div = document.createElement('div');
@@ -365,19 +232,16 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="input-group">
                     <label>応対内容</label>
                     <select id="c-content-${i}" class="c-content">
                         <option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                     </select>
                 </div>
-                
                 <div style="display:flex; gap:2px; margin:2px 0;">
                     <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:11px; height:11px;">ｄ払初回</label>
                     <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:11px; height:11px;">ｄカ即時</label>
                 </div>
-
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
                 <div class="btn-row">
@@ -394,8 +258,6 @@
             document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
             document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            
-            // iPad対応: changeイベント（iOSの「設定/Done」ボタン押下時）で確定処理を呼び出す
             document.getElementById(`c-schedule-${i}`).addEventListener('change', (e) => updateSchedule(i, e.target));
         }
     }
@@ -405,8 +267,7 @@
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
     let initializedVisitors = false;
     onSnapshot(qVisitors, (snapshot) => {
-        const listDiv = document.getElementById('waiting-list');
-        listDiv.innerHTML = "";
+        const listDiv = document.getElementById('waiting-list'); listDiv.innerHTML = "";
         let hasNew = false;
         snapshot.docChanges().forEach(change => { if (initializedVisitors && change.type === "added") { hasNew = true; } });
         if (hasNew && isSoundEnabled) { window.playFamima(); }
@@ -415,8 +276,6 @@
             const v = docSnap.data();
             const div = document.createElement('div');
             div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
-            
-            // ★ 文字潰れ防止のため、flex-wrapを追加し、はみ出すテキストは折り返す設定に変更
             div.innerHTML = `
                 <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                 <div class="v-info-box">
@@ -443,44 +302,19 @@
             const l = docSnap.data(); localLogs.push(l);
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            const dbaraiStr = l.dbarai ? "〇" : ""; const dcardStr = l.dcard ? "〇" : "";
-            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dbaraiStr}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${dcardStr}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${l.dbarai?"〇":""}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${l.dcard?"〇":""}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
             tbody.appendChild(tr);
         });
     });
 
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
-        const els = { 
-            name: document.getElementById(`c-name-${id}`), 
-            tableNum: document.getElementById(`c-table-num-${id}`), 
-            tableType: document.getElementById(`c-table-type-${id}`), 
-            schedule: document.getElementById(`c-schedule-${id}`), 
-            content: document.getElementById(`c-content-${id}`), 
-            dbarai: document.getElementById(`c-dbarai-${id}`), 
-            dcard: document.getElementById(`c-dcard-${id}`), 
-            memo: document.getElementById(`c-memo-${id}`), 
-            start: document.getElementById(`btn-start-${id}`), 
-            extend: document.getElementById(`btn-extend-${id}`), 
-            end: document.getElementById(`btn-end-${id}`), 
-            timer: document.getElementById(`timer-${id}`), 
-            clearName: document.getElementById(`btn-clear-name-${id}`) 
-        };
+        const els = { name: document.getElementById(`c-name-${id}`), tableNum: document.getElementById(`c-table-num-${id}`), tableType: document.getElementById(`c-table-type-${id}`), schedule: document.getElementById(`c-schedule-${id}`), content: document.getElementById(`c-content-${id}`), dbarai: document.getElementById(`c-dbarai-${id}`), dcard: document.getElementById(`c-dcard-${id}`), memo: document.getElementById(`c-memo-${id}`), start: document.getElementById(`btn-start-${id}`), extend: document.getElementById(`btn-extend-${id}`), end: document.getElementById(`btn-end-${id}`), timer: document.getElementById(`timer-${id}`), clearName: document.getElementById(`btn-clear-name-${id}`) };
         
-        let t_val = data.table || "";
-        let t_num = "", t_type = "T";
+        let t_val = data.table || ""; let t_num = "", t_type = "T";
         if(t_val) {
             let match = t_val.match(/^(\d+)([CT]?)$/);
-            if(match) {
-                t_num = match[1];
-                if(match[2]) t_type = match[2];
-            } else if(t_val.includes('T')) {
-                t_num = t_val.replace('T',''); t_type = 'T';
-            } else if(t_val.includes('C')) {
-                t_num = t_val.replace('C',''); t_type = 'C';
-            } else {
-                t_num = t_val;
-            }
+            if(match) { t_num = match[1]; if(match[2]) t_type = match[2]; } else if(t_val.includes('T')) { t_num = t_val.replace('T',''); t_type = 'T'; } else if(t_val.includes('C')) { t_num = t_val.replace('C',''); t_type = 'C'; } else { t_num = t_val; }
         }
 
         if(document.activeElement !== els.name) els.name.value = data.name || "";
@@ -494,103 +328,61 @@
         
         els.schedule.disabled = !!data.scheduledEndTime;
         
-        card.classList.remove('status-active', 'status-extended');
+        card.classList.remove('status-active', 'status-extended', 'time-over-yellow', 'time-over-red');
         if (data.status === 'active' || data.status === 'extended') {
             card.classList.add('status-active'); if (data.status === 'extended') card.classList.add('status-extended');
-            els.name.disabled = true; els.clearName.disabled = true; 
-            els.tableNum.disabled = true; els.tableType.disabled = true; 
-            els.content.disabled = true;
+            els.name.disabled = true; els.clearName.disabled = true; els.tableNum.disabled = true; els.tableType.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
         } else {
-            els.name.disabled = false; els.clearName.disabled = false; 
-            els.tableNum.disabled = false; els.tableType.disabled = false; 
-            els.content.disabled = false;
+            els.name.disabled = false; els.clearName.disabled = false; els.tableNum.disabled = false; els.tableType.disabled = false; els.content.disabled = false;
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00"; card.dataset.startTime = "";
         }
     }
 
     window.startService = async (id) => {
-        const name = document.getElementById(`c-name-${id}`).value;
-        const content = document.getElementById(`c-content-${id}`).value;
-        const tableNum = document.getElementById(`c-table-num-${id}`).value;
-        const tableType = document.getElementById(`c-table-type-${id}`).value;
-        const table = tableNum ? tableNum + tableType : "";
-        const schedule = document.getElementById(`c-schedule-${id}`).value;
-        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
-        const dcard = document.getElementById(`c-dcard-${id}`).checked;
-        const memo = document.getElementById(`c-memo-${id}`).value;
+        const name = document.getElementById(`c-name-${id}`).value; const content = document.getElementById(`c-content-${id}`).value;
+        const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value; const dbarai = document.getElementById(`c-dbarai-${id}`).checked; const dcard = document.getElementById(`c-dcard-${id}`).checked; const memo = document.getElementById(`c-memo-${id}`).value;
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
         await updateDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard });
     };
-    
     window.clearName = async (id) => { await updateDoc(doc(db, "counters", String(id)), { name: "" }); };
-    
     window.toggleExtend = async (id) => {
         const card = document.getElementById(`counter-card-${id}`);
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await updateDoc(doc(db, "counters", String(id)), { status: currentStatus });
     };
-    
     window.updateDbarai = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dbarai: checked }); };
     window.updateDcard = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { dcard: checked }); };
     window.updateMemo = async (id, text) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await updateDoc(doc(db, "counters", String(id)), { memo: text }); };
-    
     window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value; 
-        if (!val) return; 
-        const card = document.getElementById(`counter-card-${id}`);
-        if (card.classList.contains('status-active')) {
-            if(confirm(`終了予定時刻を【${val}】で確定しますか？\n※確定後は変更できません`)) {
-                await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val });
-            } else {
-                inputEl.value = ""; // キャンセルの場合は空に戻す
-            }
-        } else { 
-            alert("「開始」ボタンを押して応対をスタートすると、この時刻が保存されます。"); 
-        }
+        const val = inputEl.value; if (!val) return; 
+        if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
+            if(confirm(`終了予定を【${val}】で確定しますか？\n※確定後は変更できません`)) { await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val }); } else { inputEl.value = ""; }
+        } else { alert("開始ボタンを押すと保存されます"); }
     };
-    
     window.endService = async (id) => {
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
-        const name = document.getElementById(`c-name-${id}`).value;
-        const tableNum = document.getElementById(`c-table-num-${id}`).value;
-        const tableType = document.getElementById(`c-table-type-${id}`).value;
-        const table = tableNum ? tableNum + tableType : "";
-        const schedule = document.getElementById(`c-schedule-${id}`).value;
-        const content = document.getElementById(`c-content-${id}`).value;
-        const dbarai = document.getElementById(`c-dbarai-${id}`).checked;
-        const dcard = document.getElementById(`c-dcard-${id}`).checked;
-        const memo = document.getElementById(`c-memo-${id}`).value;
-        const duration = document.getElementById(`timer-${id}`).innerText;
-        const isExtended = card.classList.contains('status-extended') ? "あり" : "";
-        const startTimeISO = card.dataset.startTime;
+        const name = document.getElementById(`c-name-${id}`).value; const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value; const content = document.getElementById(`c-content-${id}`).value;
+        const dbarai = document.getElementById(`c-dbarai-${id}`).checked; const dcard = document.getElementById(`c-dcard-${id}`).checked;
+        const memo = document.getElementById(`c-memo-${id}`).value; const duration = document.getElementById(`timer-${id}`).innerText;
+        const isExtended = card.classList.contains('status-extended') ? "あり" : ""; const startTimeISO = card.dataset.startTime;
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
         await updateDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false });
     };
-    
     window.addVisitorToDb = async () => {
-        const name = document.getElementById('v-name').value;
-        const vNum = document.getElementById('v-table-num').value;
-        const vType = document.getElementById('v-table-type').value;
-        const table = vNum ? vNum + vType : "";
-        const content = document.getElementById('v-content').value;
-        const memo = document.getElementById('v-memo').value;
-        const isReserved = document.getElementById('v-is-reserved').checked;
-        const reserveTime = document.getElementById('v-reserve-time').value;
+        const name = document.getElementById('v-name').value; const table = document.getElementById('v-table-num').value + document.getElementById('v-table-type').value;
+        const content = document.getElementById('v-content').value; const memo = document.getElementById('v-memo').value;
+        const isReserved = document.getElementById('v-is-reserved').checked; const reserveTime = document.getElementById('v-reserve-time').value;
         if(!name) return;
         await addDoc(collection(db, "visitors"), { createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), name, table, content, memo, isReserved, reserveTime });
-        document.getElementById('v-name').value = ''; 
-        document.getElementById('v-table-num').value = ''; 
-        document.getElementById('v-table-type').value = 'T'; 
-        document.getElementById('v-memo').value = '';
-        document.getElementById('v-is-reserved').checked = false; 
-        document.getElementById('v-reserve-time').value = ''; 
-        document.getElementById('v-reserve-time').style.display = 'none';
+        document.getElementById('v-name').value = ''; document.getElementById('v-table-num').value = ''; document.getElementById('v-table-type').value = 'T'; document.getElementById('v-memo').value = '';
+        document.getElementById('v-is-reserved').checked = false; document.getElementById('v-reserve-time').value = ''; document.getElementById('v-reserve-time').style.display = 'none';
     };
-
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
@@ -602,17 +394,33 @@
         link.href = URL.createObjectURL(blob); link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
-
     window.clearAllLogs = async () => { if(!confirm("ログを全削除します。よろしいですか？")) return;
         const q = query(collection(db, "logs")); const snapshot = await getDocs(q);
         const promises = snapshot.docs.map(doc => deleteDoc(doc.ref)); await Promise.all(promises); alert("削除しました");
     }
 
+    // ★ タイマーの更新処理に、時間経過による黄色・赤色点滅のクラス付与ロジックを追加
     setInterval(() => {
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const card = document.getElementById(`counter-card-${i}`);
             const startTimeStr = card.dataset.startTime;
-            if (startTimeStr) { const diff = Date.now() - new Date(startTimeStr).getTime(); document.getElementById(`timer-${i}`).innerText = formatDuration(diff); }
+            if (startTimeStr) { 
+                const diff = Date.now() - new Date(startTimeStr).getTime(); 
+                document.getElementById(`timer-${i}`).innerText = formatDuration(diff); 
+                
+                // 5400000ms = 1.5時間, 3600000ms = 1時間
+                if (diff >= 5400000) {
+                    card.classList.add('time-over-red');
+                    card.classList.remove('time-over-yellow');
+                } else if (diff >= 3600000) {
+                    card.classList.add('time-over-yellow');
+                    card.classList.remove('time-over-red');
+                } else {
+                    card.classList.remove('time-over-yellow', 'time-over-red');
+                }
+            } else {
+                card.classList.remove('time-over-yellow', 'time-over-red');
+            }
         }
     }, 1000);
 
@@ -623,13 +431,11 @@
         const s = String(totalSec % 60).padStart(2, '0');
         return `${h}:${m}:${s}`;
     }
-
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します(初回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){ await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false }); }
         alert("完了。リロードしてください。"); location.reload();
     }
-
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     getDoc(doc(db, "counters", "1")).then(docSnap => { if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; } });
 </script>
