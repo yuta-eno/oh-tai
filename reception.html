@@ -20,7 +20,6 @@ body{
     overflow:hidden;
 }
 
-/* 背景動画 */
 #bg-video {
     position: fixed;
     top: 50%;
@@ -66,10 +65,9 @@ header{
     z-index: 15;
 }
 
-/* ★修正：ユーザーの認識結果を、愛子の字幕（最大高さ考慮）より上に配置 */
 #user-container {
     position: absolute;
-    bottom: 420px; /* 元145pxから変更：マイク帯に隠れないよう上へ移動 */
+    bottom: 420px; 
     left: 0;
     right: 0;
     display: flex;
@@ -100,8 +98,6 @@ header{
     overflow-y: auto; 
     -webkit-overflow-scrolling: touch; 
     scrollbar-width: none; 
-    
-    /* ★追加：2行目以降も1文字目に合わせて左寄せにする */
     text-align: left; 
 }
 .ai::-webkit-scrollbar {
@@ -147,6 +143,47 @@ header{
     color:white;
     border:none;
     border-radius:50px;
+}
+
+/* ★追加：モード選択とタッチパネル用のボタンエリア */
+#options-container {
+    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 5px;
+    padding-bottom: 10px;
+}
+.option-btn {
+    background: #fff;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    transition: 0.2s;
+    min-width: 120px;
+}
+.option-btn:active {
+    background: #f0f0f0;
+    transform: translateY(2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.input-box {
+    font-size: 22px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    text-align: center;
+    width: 60%;
+    max-width: 300px;
+}
+.submit-btn {
+    background: var(--primary);
+    color: #fff;
 }
 
 #action-area{display:none;}
@@ -230,19 +267,18 @@ header{
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-</style>
-
-<link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+</style>
 </head>
 
 <body>
 
 <div id="reset-popup">
-    <div class="popup-box">「受付をはじめる」<br>からやり直します。</div>
+    <div class="popup-box">「受付をはじめる」からやり直します。</div>
 </div>
 
 <div id="reset-btn-container">
@@ -258,6 +294,8 @@ header{
 
 <div id="controls">
     <button id="start-btn" onclick="beginReception()">受付をはじめる</button>
+
+    <div id="options-container"></div>
 
     <div id="action-area">
         <button id="mic-btn" onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
@@ -294,8 +332,9 @@ const Q5={ text: "本人確認書類はお持ちでしょうか？", file: "q5.m
 
 let questions=[Q0];
 let step=0;
-let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+let data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:"", fallbackMemo:""};
 let isProcessing = false; 
+let inputMode = ""; // ★追加：voice か touch を記憶する変数
 
 function isNotSub(t){
  return /本人じゃない|いいえ|違う|ちげー|本人ではない|契約者ではない|契約者じゃない|家族|代理|妻|夫|子供|子ども|親|父|母|兄|姉|弟|妹/.test(t);
@@ -305,15 +344,39 @@ const chat=document.getElementById("chat-container");
 const userContainer=document.getElementById("user-container"); 
 const startBtn=document.getElementById("start-btn");
 const action=document.getElementById("action-area");
+const optionsContainer=document.getElementById("options-container");
 const micBtn=document.getElementById("mic-btn");
 const status=document.getElementById("status-bar");
 const speakIndicator=document.getElementById("speak-indicator");
 const resetBtnUi=document.getElementById("reset-btn-ui"); 
 
+function playBeep() {
+    // 中身を空にして音を消しました
+}
+
 window.beginReception=()=>{
     startBtn.style.display="none";
-    action.style.display="block";
     resetBtnUi.style.display="block"; 
+    showModeSelection(); // ★修正：まずはモード選択画面を出す
+};
+
+// ★新規追加：入力方法を選ぶ画面
+window.showModeSelection = () => {
+    addBubble("ご希望の入力方法を、下のボタンからお選びください。", "ai");
+    optionsContainer.innerHTML = `
+        <button class="option-btn" onclick="selectMode('voice')"><i class="fas fa-microphone"></i> お話しして受付</button>
+        <button class="option-btn" onclick="selectMode('touch')"><i class="fas fa-hand-pointer"></i> タッチして受付</button>
+    `;
+    optionsContainer.style.display = "flex";
+};
+
+// ★新規追加：選ばれたモードを記憶して受付スタート
+window.selectMode = (mode) => {
+    inputMode = mode;
+    optionsContainer.style.display = "none";
+    if (mode === "voice") {
+        action.style.display = "block";
+    }
     ask();
 };
 
@@ -328,10 +391,55 @@ window.forceReset=()=>{
 function ask(){
     const q=questions[step];
     addBubble(q.text,"ai");
-    speak(q.file,true);
+    // 音声モードなら、話し終わったあとにマイクを自動起動（true）
+    speak(q.file, inputMode === "voice");
+
+    if (inputMode === "touch") {
+        renderOptions(q); // タッチモードならボタンを表示
+    }
 }
 
-// パソコン等のChromeで開いた時用の予備マイク（Web Speech API）
+// ★新規追加：タッチモードの時のボタン表示用
+function renderOptions(q) {
+    optionsContainer.innerHTML = "";
+    optionsContainer.style.display = "flex";
+    status.innerText = "ボタンを選んでください";
+    status.style.background = "green";
+
+    if (q === Q0) {
+        optionsContainer.innerHTML = `
+            <button class="option-btn" onclick="answer('はい')">はい（予約あり）</button>
+            <button class="option-btn" onclick="answer('いいえ')">いいえ（予約なし）</button>
+        `;
+    } else if (q === Q_TIME) {
+        optionsContainer.innerHTML = `
+            <input type="time" id="time-input" class="input-box" value="10:00">
+            <button class="option-btn submit-btn" onclick="answer(document.getElementById('time-input').value)">決定</button>
+        `;
+    } else if (q === Q1) {
+        const purposes = ["新規契約", "機種変更", "故障・修理", "料金相談", "プラン変更", "操作説明", "解約", "その他"];
+        let html = "";
+        purposes.forEach(p => {
+            html += `<button class="option-btn" onclick="answer('${p}')">${p}</button>`;
+        });
+        optionsContainer.innerHTML = html;
+    } else if (q === Q2) {
+        optionsContainer.innerHTML = `
+            <input type="text" id="name-input" class="input-box" placeholder="例：ドコモ" autocomplete="off">
+            <button class="option-btn submit-btn" onclick="let v=document.getElementById('name-input').value; if(v) answer(v);">次へ</button>
+        `;
+    } else if (q === Q3 || q === Q4 || q === Q5) {
+        optionsContainer.innerHTML = `
+            <button class="option-btn" onclick="answer('はい')">はい</button>
+            <button class="option-btn" onclick="answer('いいえ')">いいえ</button>
+        `;
+    } else {
+        optionsContainer.style.display = "none";
+        status.innerText = "待機中";
+        status.style.background = "#000";
+    }
+}
+
 const rec=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
 rec.lang="ja-JP";
 
@@ -347,7 +455,6 @@ rec.onresult=e=>{
     window.onNativeVoiceResult(e.results[0][0].transcript);
 };
 
-// ★追加：Androidのポップアップマイクからの合図を受け取るためのグローバル関数
 window.onNativeVoiceStart = () => {
     isProcessing = false; 
     micBtn.classList.add("listening");
@@ -379,16 +486,21 @@ window.onNativeVoiceResult = (text) => {
 };
 
 window.toggleMic=()=>{
-    // ★修正：アプリ側（AndroidMic）が存在すればGoogleポップアップマイクを呼び出す！
+    if (inputMode === "touch") return; // タッチモードの時は誤作動防止
     if(window.AndroidMic) {
         window.AndroidMic.startListening();
     } else {
-        // パソコンなどで開いた場合は今まで通りのマイクを使う
         try{rec.start();}catch(e){rec.stop();}
     }
 };
 
-async function answer(t){
+window.answer = async function(t){
+    if (inputMode === "touch") {
+        optionsContainer.style.display = "none"; 
+        status.innerText = "処理中…";
+        status.style.background = "#000";
+    }
+
     addBubble(t,"user");
     const q=questions[step];
 
@@ -401,7 +513,16 @@ async function answer(t){
         }
     }
     else if(q===Q_TIME) data.reserveTime = t;
-    else if(q===Q1) data.purpose = t;
+    else if(q===Q1) {
+        // ★新規追加：用件が管理ボードの項目にない言葉だった場合のフォールバック処理
+        const validPurposes = ["新規契約", "機種変更", "故障・修理", "料金相談", "プラン変更", "操作説明", "解約", "その他"];
+        if (validPurposes.includes(t)) {
+            data.purpose = t;
+        } else {
+            data.purpose = "その他";
+            data.fallbackMemo = t; // 実際話した内容を備考に回すために記憶
+        }
+    }
     else if(q===Q2) data.name = t;
     else if(q===Q3){
         data.isSub=t;
@@ -425,6 +546,8 @@ async function answer(t){
         return; 
     }
 
+    if (inputMode === "voice") action.style.display = "none";
+
     let msgText="個人情報保護のため、お手続きする電話番号と、ご契約者様のフルネームをテーブルのボードにご記入ください。あわせて、備え付けの紙のアンケートにもご記入をお願いいたします。まもなくスタッフが参りますので、そのままお待ちくださいませ。";
     addBubble(msgText,"ai");
 
@@ -433,19 +556,24 @@ async function answer(t){
     await send();
     await new Promise(r=>setTimeout(r,3000));
     reset();
-}
+};
 
 async function send(){
     status.innerText="送信中…";
     status.style.background="orange";
     
     let reserveInfo = data.reserveTime ? `【予約】あり（${data.reserveTime}）` : `【予約】なし（当日来店）`;
-    const memo = `${reserveInfo} 【本人】${data.isSub} 【電話連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    let memo = `${reserveInfo} 【本人】${data.isSub} 【契約者連絡可否】${data.contact||"本人"} 【本人確認書類】${data.id}`;
+    
+    // ★追加：規定外の言葉だった場合は、備考の末尾に追記する
+    if (data.fallbackMemo) {
+        memo += ` 【用件詳細】${data.fallbackMemo}`;
+    }
     
     await addDoc(collection(db,"visitors"),{
         name:data.name,
-        table: tableNum,
-        content:data.purpose || "来店予約（" + data.reserveTime + "）", 
+        table: tableNum + "テーブル",
+        content:data.purpose, 
         memo:memo,
         createdAt:serverTimestamp(),
         timeStr:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})
@@ -457,13 +585,17 @@ async function send(){
 function reset(){
     step=0;
     questions=[Q0];
-    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:""};
+    data={isReserve:"", reserveTime:"", purpose:"", name:"", isSub:"", contact:"", id:"", fallbackMemo:""};
+    inputMode = ""; // モードもリセット
     chat.innerHTML="";
     userContainer.innerHTML=""; 
     startBtn.style.display="block";
     action.style.display="none";
+    optionsContainer.style.display="none";
     resetBtnUi.style.display="none"; 
     speakIndicator.classList.remove("active", "manual-prompt"); 
+    status.innerText="準備完了";
+    status.style.background="#000";
 }
 
 function addBubble(t,type){
@@ -502,18 +634,17 @@ function speak(fileName, auto=false){
         
         audio.onended = () => {
             video.pause();
-            if(auto) setTimeout(toggleMic, 300);
+            // 音声モードの時だけマイクを自動起動させる
+            if(auto && inputMode === "voice") setTimeout(toggleMic, 300);
             res();
         };
 
         audio.onerror = (e) => {
-            alert("音声ファイルの再生に失敗しました。\nファイル名: " + fileName + "\n※ファイルが存在するか確認してください。");
             console.error("Audio Load Error:", e);
             res(); 
         };
 
         audio.play().catch(e => {
-            alert("自動再生がブロックされたか、ファイルが見つかりません。\n" + fileName);
             console.error(e);
             res();
         });
