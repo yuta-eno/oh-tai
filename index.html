@@ -7,103 +7,101 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Ｒ１２２管理ボード</title>
+    
+    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+
     <style>
         :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
-        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: var(--primary-color); color: white; padding: 4px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { margin: 0; font-size: 0.9rem; font-weight: normal; }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; touch-action: manipulation; }
+        header { background: var(--primary-color); color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin: 0; font-size: 1rem; font-weight: normal; }
         .header-actions { display: flex; gap: 8px; }
-        .header-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
-        .header-btn:hover { background: rgba(255,255,255,0.4); }
+        .header-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
+        .header-btn:active { background: rgba(255,255,255,0.4); }
         .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
         #btn-enable-sound { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; display: none; animation: flash 2s infinite; border: 2px solid white; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        
         .main-dashboard { display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; }
-        .counters-section { flex: 1 1 auto; width: 78%; }
+        .counters-section { flex: 1 1 auto; width: 75%; }
         .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
         @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 900px) { .main-dashboard { flex-wrap: wrap; } .counters-section { width: 100%; } .grid-container { grid-template-columns: repeat(3, 1fr); } }
-        .waiting-section { flex: 0 0 22%; min-width: 240px; background: #e0e0e0; padding: 8px; border-radius: 4px; position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
-        h2 { font-size: 0.85rem; margin: 0 0 8px 0; padding: 6px 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
         
-        .card { background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 5px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #ddd; border-top: 3px solid #bbb; transition: 0.2s; }
+        .waiting-section { flex: 0 0 25%; min-width: 260px; background: #e0e0e0; padding: 8px; border-radius: 4px; position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+        h2 { font-size: 0.9rem; margin: 0 0 8px 0; padding: 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
         
-        /* ---------------------------------------------------
-           応対中パネルの強調デザイン（案2＋太枠）
-        ---------------------------------------------------- */
-        .status-active { border: 3px solid #1890ff !important; background-color: #f0faff; box-shadow: 0 4px 8px rgba(24, 144, 255, 0.2); border-radius: 6px; }
-        .status-extended { border: 3px solid #52c41a !important; background-color: #f6ffed; animation: pulse-green 2s infinite; }
+        .card { background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 6px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #ddd; border-top: 4px solid #bbb; transition: 0.2s; }
+        
+        /* パネル状態のデザイン */
+        .status-active { border: 4px solid #1890ff !important; background-color: #f0faff; box-shadow: 0 4px 8px rgba(24, 144, 255, 0.2); border-radius: 6px; }
+        .status-extended { border: 4px solid #52c41a !important; background-color: #f6ffed; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(82, 196, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); } }
-        .time-over-yellow { border: 3px solid #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
+        .time-over-yellow { border: 4px solid #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
-        .time-over-red { border: 3px solid #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
+        .time-over-red { border: 4px solid #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); } }
 
-        /* 応対中（disabled）の入力枠を消してテキスト化 */
-        .status-active input:disabled, 
-        .status-active select:disabled, 
-        .status-active textarea:disabled {
-            background-color: transparent !important;
-            border: none !important;
-            color: #111 !important;
-            font-weight: 900 !important;
-            padding: 0 !important;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            opacity: 1; /* iOSでの色褪せ防止 */
-        }
-        /* 応対中テキストのサイズ強調 */
-        .status-active input.c-name:disabled { font-size: 1.2rem !important; color: #0056b3 !important; }
-        .status-active .c-table-input:disabled, 
-        .status-active .c-table-select:disabled { font-size: 1.3rem !important; color: var(--primary-color) !important; }
-        .status-active select.c-content:disabled { font-size: 1.1rem !important; color: #333 !important; margin-top: 2px; }
-        .status-active input.c-schedule:disabled { font-size: 1.1rem !important; color: #d84315 !important; }
-        .status-active textarea.c-memo:disabled { font-size: 0.85rem !important; color: #555 !important; height: auto; margin-top: 2px; }
-        
-        /* 応対中は不要なボタンを隠す */
-        .status-active .btn-clear-name,
-        .status-active .btn-schedule-ok { display: none !important; }
-        /* --------------------------------------------------- */
+        /* ドラッグ中に枠が光るエフェクト */
+        .drag-over { border: 4px dashed #1890ff !important; background-color: #e6f7ff !important; opacity: 0.8; transform: scale(0.98); }
+
+        .status-active input:disabled, .status-active select:disabled, .status-active textarea:disabled { background-color: transparent !important; border: none !important; color: #111 !important; font-weight: 900 !important; padding: 0 !important; -webkit-appearance: none; -moz-appearance: none; appearance: none; opacity: 1; }
+        .status-active input.c-name:disabled { font-size: 1.3rem !important; color: #0056b3 !important; }
+        .status-active .c-table-input:disabled, .status-active .c-table-select:disabled { font-size: 1.4rem !important; color: var(--primary-color) !important; }
+        .status-active select.c-content:disabled { font-size: 1.2rem !important; color: #333 !important; margin-top: 2px; }
+        .status-active input.c-schedule:disabled { font-size: 1.2rem !important; color: #d84315 !important; }
+        .status-active textarea.c-memo:disabled { font-size: 0.9rem !important; color: #555 !important; height: auto; margin-top: 2px; }
+        .status-active .btn-clear-name, .status-active .btn-schedule-ok { display: none !important; }
 
         .input-group { display: flex; flex-direction: column; gap: 0; }
-        .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
-        input, select, textarea { padding: 2px 4px; border: 1px solid #ccc; border-radius: 2px; font-size: 0.75rem; height: auto; width: 100%; box-sizing: border-box; }
+        .input-group label { font-size: 0.65rem; font-weight: bold; color: #666; margin-bottom: 2px;}
+        input, select, textarea { padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; height: auto; width: 100%; box-sizing: border-box; }
         input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
         
-        input.c-name { font-weight: 900 !important; color: #0056b3 !important; font-size: 0.9rem !important; }
-        .card-top-layout { display: flex; gap: 4px; height: 65px; }
+        input.c-name { font-weight: 900 !important; color: #0056b3 !important; font-size: 1rem !important; }
+        .card-top-layout { display: flex; gap: 6px; height: 75px; }
         .table-side { flex: 0 0 95px; display: flex; flex-direction: column; }
-        .c-table-input { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 2px !important; text-align: center; }
-        .c-table-select { font-size: 0.95rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 !important; text-align: center; border-left: none; }
+        .c-table-input { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 4px !important; text-align: center; }
+        .c-table-select { font-size: 1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 2px !important; text-align: center; border-left: none; }
         
-        .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        textarea.c-memo { resize: none; height: 2.2em; line-height: 1.1; }
-        .timer-display { font-size: 1.1rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 1px 0; }
-        .btn-row { display: flex; gap: 2px; margin-top: 2px; }
-        button { flex: 1; padding: 4px 0; border: none; border-radius: 2px; cursor: pointer; color: white; font-weight: bold; font-size: 0.75rem; transition: opacity 0.2s; }
-        button:hover { opacity: 0.8; }
-        .btn-start { background: #1890ff; padding: 6px 0; font-size: 0.85rem; }
-        .btn-end { background: #52c41a; display: none; }
-        .btn-extend { background: #faad14; display: none; }
-        .btn-clear-name { width: 18px; height: 18px; flex: none; background: #999; color: white; border: none; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; margin-left: 2px; padding: 0; }
+        .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        textarea.c-memo { resize: none; height: 2.2em; line-height: 1.2; font-size: 0.85rem; }
+        .timer-display { font-size: 1.2rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 2px 0; }
+        .btn-row { display: flex; gap: 4px; margin-top: 2px; }
+        button { flex: 1; padding: 8px 0; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85rem; }
+        button:active { opacity: 0.7; transform: scale(0.98); }
+        .btn-start { background: #1890ff; padding: 10px 0; font-size: 0.95rem; }
+        .btn-end { background: #52c41a; }
+        .btn-extend { background: #faad14; }
         
-        .btn-schedule-ok { width: 36px; height: 22px; flex: none; background: #4CAF50; color: white; border: none; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; padding: 0; }
+        .btn-clear-name { width: 26px; height: 26px; flex: none; background: #999; color: white; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-left: 2px; padding: 0; }
+        .btn-schedule-ok { width: 44px; height: 26px; flex: none; background: #4CAF50; color: white; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; padding: 0; }
         
-        .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
-        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
-        .visitor-card { background: white; padding: 0; border-left: 4px solid var(--primary-color); border-radius: 3px; font-size: 0.75rem; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; display: flex; align-items: stretch; overflow: hidden; }
+        .visitor-form { background: #fff; padding: 8px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
+        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 6px; padding: 8px; font-size: 0.95rem; font-weight: bold; border-radius: 4px; }
+        
+        /* 掴めることを示すカーソル */
+        .visitor-card { background: white; padding: 0; border-left: 5px solid var(--primary-color); border-radius: 4px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.15); margin-bottom: 8px; display: flex; flex-direction: column; overflow: hidden; cursor: grab; }
+        .visitor-card:active { cursor: grabbing; }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
-        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(40px, 20%, 55px); flex: none; font-size: clamp(0.9rem, 2.5vw, 1.2rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; text-align: center;}
+        .v-card-top { display: flex; align-items: stretch; width: 100%; }
+        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(45px, 20%, 65px); flex: none; font-size: clamp(1rem, 2.5vw, 1.4rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; text-align: center;}
         .is-reserved .v-table-big-box { background: #fff9c4; }
-        .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
-        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 2px; padding: 2px; background: #fdfdfd; }
-        .btn-delete-visitor { position: absolute; top: 3px; right: 3px; background: #ccc; color: #333; width: 18px; height: 18px; padding: 0; font-size: 11px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
+        .v-info-box { flex: 1; min-width: 0; padding: 6px 8px; position: relative; }
+        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.5em; margin-top: 6px; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 4px; padding: 4px; background: #fdfdfd; cursor: text;}
+        
+        .btn-delete-visitor { position: absolute; top: 4px; right: 4px; background: #ccc; color: #333; width: 24px; height: 24px; padding: 0; font-size: 14px; font-weight: bold; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; border: none; }
+        .btn-move-to-panel { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; font-weight: bold; font-size: 1rem; }
+        .btn-move-to-panel:active { background: #388E3C; }
+
         .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
-        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
-        .log-table th, .log-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
+        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; background: white; }
+        .log-table th, .log-table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         .log-table th { background-color: #eee; white-space: nowrap; }
         #setup-btn { background: #333; color: #fff; padding: 5px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none;}
+        
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -127,28 +125,28 @@
         <div class="waiting-section">
             <h2>未対応／来店者リスト</h2>
             <div class="visitor-form">
-                <div style="display:flex; gap:4px; align-items:flex-end;">
+                <div style="display:flex; gap:6px; align-items:flex-end;">
                     <div class="input-group" style="flex:3; min-width:0;"><label>お名前</label><input type="text" id="v-name" placeholder="名"></div>
                     <div class="input-group" style="flex:1.8; min-width:0;">
                         <label>卓No</label>
                         <div style="display:flex; gap:0;">
-                            <input type="text" id="v-table-num" style="padding:2px; flex:1.5; font-size:0.9rem; min-width:0;" placeholder="No">
-                            <select id="v-table-type" style="padding:0; flex:1; font-size:0.9rem; border-left:none;">
+                            <input type="text" id="v-table-num" style="padding:4px; flex:1.5; font-size:1rem; min-width:0;" placeholder="No">
+                            <select id="v-table-type" style="padding:0; flex:1; font-size:1rem; border-left:none;">
                                 <option value="T">T</option><option value="C">C</option>
                             </select>
                         </div>
                     </div>
                     <div class="input-group" style="flex:3; min-width:0;"><label>用件</label>
-                        <select id="v-content" style="padding:2px 0;">
+                        <select id="v-content" style="padding:4px 0;">
                             <option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                         </select>
                     </div>
                 </div>
-                <div style="display:flex; gap:10px; align-items:center; margin-top:6px; margin-bottom:2px;">
-                    <label style="font-size:0.7rem; font-weight:bold; color:#d84315; cursor:pointer; display:flex; align-items:center; gap:2px;">
-                        <input type="checkbox" id="v-is-reserved" style="margin:0;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">予約あり
+                <div style="display:flex; gap:10px; align-items:center; margin-top:8px; margin-bottom:4px;">
+                    <label style="font-size:0.8rem; font-weight:bold; color:#d84315; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" id="v-is-reserved" style="margin:0; width:16px; height:16px;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">予約あり
                     </label>
-                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.75rem; padding:1px 2px; width:80px;">
+                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.9rem; padding:2px 4px; width:100px;">
                 </div>
                 <div class="input-group"><label>備考</label><textarea id="v-memo" class="v-memo" placeholder="【予約】あり 等"></textarea></div>
                 <button class="btn-arrival" onclick="addVisitorToDb()">来店登録（受付）</button>
@@ -167,6 +165,19 @@
             <tbody id="log-table-body"></tbody>
         </table>
     </div>
+
+    <div id="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+        <div class="modal-content">
+            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 1.2rem;">空き枠へ案内</h3>
+            <p id="modal-visitor-name" style="font-weight: 900; font-size: 1.4rem; color: var(--primary-color); margin: 0 0 20px 0;"></p>
+            <select id="modal-panel-select" style="width: 100%; padding: 12px; font-size: 1.3rem; margin-bottom: 25px; border: 2px solid #ccc; border-radius: 6px; text-align: center; font-weight:bold;"></select>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background: #999; color: white; padding: 14px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 1.1rem;">キャンセル</button>
+                <button onclick="executeMoveToPanelFromModal()" style="background: #1890ff; color: white; padding: 14px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 1.1rem;">決定</button>
+            </div>
+        </div>
+    </div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -186,6 +197,10 @@
     let localLogs = [];
     let isSoundEnabled = false;
     let wakeLock = null;
+    
+    let currentCounters = {};
+    let visitorsData = {};
+    window.currentMoveVisitorId = null;
 
     const requestWakeLock = async () => {
         try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
@@ -215,17 +230,6 @@
     window.onload = function() {
         createCards();
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
-        requestWakeLock();
-    };
-
-    window.enableSound = function() {
-        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        audioCtx.resume().then(() => {
-            window.playFamima(); isSoundEnabled = true;
-            const btn = document.getElementById('btn-enable-sound');
-            btn.innerText = "🔊 通知音ON"; btn.style.background = "#4CAF50"; btn.style.animation = "none";
-            setTimeout(() => { btn.style.display = 'none'; }, 3000);
-        });
         requestWakeLock();
     };
 
@@ -267,9 +271,9 @@
                         <option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                     </select>
                 </div>
-                <div style="display:flex; gap:2px; margin:2px 0;">
-                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:11px; height:11px;">ｄ払初回</label>
-                    <label style="flex:1; display:flex; align-items:center; gap:2px; cursor:pointer; font-size:0.55rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:11px; height:11px;">ｄカ即時</label>
+                <div style="display:flex; gap:2px; margin:4px 0;">
+                    <label style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.65rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:14px; height:14px; margin:0;">ｄ払初回</label>
+                    <label style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.65rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:14px; height:14px; margin:0;">ｄカ即時</label>
                 </div>
                 <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
                 <div class="timer-display" id="timer-${i}">00:00:00</div>
@@ -280,6 +284,21 @@
                 </div>
             `;
             grid.appendChild(div);
+
+            // ★ドラッグ＆ドロップ受け入れ処理
+            div.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!div.classList.contains('status-active')) div.classList.add('drag-over');
+            });
+            div.addEventListener('dragleave', () => { div.classList.remove('drag-over'); });
+            div.addEventListener('drop', (e) => {
+                e.preventDefault();
+                div.classList.remove('drag-over');
+                if (div.classList.contains('status-active')) return;
+                const vId = e.dataTransfer.getData('text/plain');
+                if (vId) window.executeMoveToPanel(vId, i);
+            });
+
             document.getElementById(`btn-start-${i}`).addEventListener('click', () => startService(i));
             document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
             document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
@@ -290,36 +309,55 @@
             document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => updateSchedule(i, document.getElementById(`c-schedule-${i}`)));
         }
     }
-    onSnapshot(collection(db, "counters"), (snapshot) => { snapshot.forEach((docSnap) => { updateCardUI(docSnap.id, docSnap.data()); }); });
+    onSnapshot(collection(db, "counters"), (snapshot) => { 
+        snapshot.forEach((docSnap) => { 
+            currentCounters[docSnap.id] = docSnap.data();
+            updateCardUI(docSnap.id, docSnap.data()); 
+        }); 
+    });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
     let initializedVisitors = false;
     onSnapshot(qVisitors, (snapshot) => {
         const listDiv = document.getElementById('waiting-list'); listDiv.innerHTML = "";
         let hasNew = false;
+        visitorsData = {};
+        
         snapshot.docChanges().forEach(change => { if (initializedVisitors && change.type === "added") { hasNew = true; } });
         if (hasNew && isSoundEnabled) { window.playFamima(); }
         initializedVisitors = true;
+        
         snapshot.forEach((docSnap) => {
             const v = docSnap.data();
+            visitorsData[docSnap.id] = v;
+            
             const div = document.createElement('div');
             div.className = 'visitor-card' + (v.isReserved || (v.memo && v.memo.includes("【予約】あり")) ? " is-reserved" : "");
+            
+            // ★ドラッグして動かせるようにする設定
+            div.setAttribute('draggable', 'true');
+            div.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', docSnap.id); });
+
             div.innerHTML = `
-                <div class="v-table-big-box">${v.table ? v.table : ''}</div>
-                <div class="v-info-box">
-                    <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                    <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:clamp(4px, 1vw, 8px); padding-right:16px; line-height:1.3;">
-                        <span style="color:#d32f2f; font-weight:bold; font-size:clamp(0.75rem, 1.8vw, 1.0rem); white-space:nowrap;">${v.timeStr}</span>
-                        <span style="font-weight:900; font-size:clamp(0.9rem, 2.2vw, 1.2rem); color:#000; word-break:break-word;">${v.name} 様</span>
-                        <span style="color:#666; font-size:clamp(0.65rem, 1.5vw, 0.95rem); word-break:break-word;">${v.content}</span>
-                        ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:clamp(0.65rem, 1.5vw, 0.9rem); padding:2px 5px; border-radius:3px; white-space:nowrap; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                <div class="v-card-top">
+                    <div class="v-table-big-box">${v.table ? v.table : ''}</div>
+                    <div class="v-info-box">
+                        <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
+                        <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:clamp(4px, 1vw, 8px); padding-right:20px; line-height:1.4;">
+                            <span style="color:#d32f2f; font-weight:bold; font-size:clamp(0.85rem, 1.8vw, 1.1rem); white-space:nowrap;">${v.timeStr}</span>
+                            <span style="font-weight:900; font-size:clamp(1rem, 2.2vw, 1.3rem); color:#000; word-break:break-word;">${v.name} 様</span>
+                            <span style="color:#666; font-size:clamp(0.75rem, 1.5vw, 1rem); word-break:break-word;">${v.content}</span>
+                            ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:clamp(0.7rem, 1.5vw, 0.95rem); padding:2px 6px; border-radius:4px; white-space:nowrap; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                        </div>
+                        <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                     </div>
-                    <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                 </div>
+                <button class="btn-move-to-panel" id="move-v-${docSnap.id}">➡ 空き枠へ案内する</button>
             `;
             listDiv.appendChild(div);
             document.getElementById(`del-v-${docSnap.id}`).addEventListener('click', () => deleteDoc(doc(db, "visitors", docSnap.id)));
             document.getElementById(`memo-v-${docSnap.id}`).addEventListener('change', (e) => updateDoc(doc(db, "visitors", docSnap.id), { memo: e.target.value }));
+            document.getElementById(`move-v-${docSnap.id}`).addEventListener('click', () => window.openMoveModal(docSnap.id));
         });
     });
 
@@ -345,7 +383,6 @@
             else if(t_val.endsWith('C')) { t_num = t_val.slice(0, -1); t_type = 'C'; }
             else { t_num = t_val; t_type = 'T'; }
         }
-
         if(document.activeElement !== els.name) els.name.value = data.name || "";
         if(document.activeElement !== els.tableNum) els.tableNum.value = t_num;
         if(document.activeElement !== els.tableType) els.tableType.value = t_type;
@@ -369,6 +406,46 @@
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00"; card.dataset.startTime = "";
         }
+    }
+
+    window.openMoveModal = function(vId) {
+        const v = visitorsData[vId];
+        if(!v) return;
+        window.currentMoveVisitorId = vId;
+        document.getElementById('modal-visitor-name').innerText = v.name + " 様";
+        const select = document.getElementById('modal-panel-select');
+        select.innerHTML = '<option value="">案内する枠を選択</option>';
+        for(let i=1; i<=TOTAL_COUNTERS; i++) {
+            const c = currentCounters[i];
+            if(c && c.status === "") select.innerHTML += `<option value="${i}">枠 ${i}</option>`;
+        }
+        document.getElementById('modal-overlay').style.display = 'flex';
+    }
+
+    // ボタンからの移動（モーダル経由）
+    window.executeMoveToPanelFromModal = async function() {
+        const panelId = document.getElementById('modal-panel-select').value;
+        if(!panelId) { alert("枠を選択してください"); return; }
+        const vId = window.currentMoveVisitorId;
+        await window.executeMoveToPanel(vId, panelId);
+        document.getElementById('modal-overlay').style.display = 'none';
+    }
+
+    // ★ドラッグ＆ドロップ ＆ モーダル共通の案内処理
+    window.executeMoveToPanel = async function(vId, panelId) {
+        const v = visitorsData[vId];
+        if(!v) return;
+        
+        let customerInfo = `【${v.name}様】受付:${v.timeStr}`;
+        if (v.isReserved) customerInfo += ` / 予約:${v.reserveTime || "あり"}`;
+        
+        let newMemo = v.memo ? `${customerInfo}\n${v.memo}` : customerInfo;
+        
+        let updateData = { content: v.content, memo: newMemo };
+        if(v.table) updateData.table = v.table;
+        
+        await updateDoc(doc(db, "counters", String(panelId)), updateData);
+        await deleteDoc(doc(db, "visitors", vId));
     }
 
     window.startService = async (id) => {
@@ -438,7 +515,6 @@
             if (startTimeStr) { 
                 const diff = Date.now() - new Date(startTimeStr).getTime(); 
                 document.getElementById(`timer-${i}`).innerText = formatDuration(diff); 
-                
                 if (diff >= 5400000) { card.classList.add('time-over-red'); card.classList.remove('time-over-yellow'); } 
                 else if (diff >= 3600000) { card.classList.add('time-over-yellow'); card.classList.remove('time-over-red'); } 
                 else { card.classList.remove('time-over-yellow', 'time-over-red'); }
@@ -462,4 +538,4 @@
     getDoc(doc(db, "counters", "1")).then(docSnap => { if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; } });
 </script>
 </body>
-</html>
+</html>    
