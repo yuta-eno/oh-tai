@@ -25,14 +25,46 @@
         @media (max-width: 900px) { .main-dashboard { flex-wrap: wrap; } .counters-section { width: 100%; } .grid-container { grid-template-columns: repeat(3, 1fr); } }
         .waiting-section { flex: 0 0 22%; min-width: 240px; background: #e0e0e0; padding: 8px; border-radius: 4px; position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
         h2 { font-size: 0.85rem; margin: 0 0 8px 0; padding: 6px 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
-        .card { background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 5px; display: flex; flex-direction: column; gap: 4px; border-top: 3px solid #bbb; transition: 0.2s; }
-        .status-active { border-top-color: #1890ff; background-color: #f0faff; }
-        .status-extended { border-top-color: #52c41a; background-color: #f6ffed; animation: pulse-green 2s infinite; }
+        
+        .card { background: var(--card-bg); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 5px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #ddd; border-top: 3px solid #bbb; transition: 0.2s; }
+        
+        /* ---------------------------------------------------
+           応対中パネルの強調デザイン（案2＋太枠）
+        ---------------------------------------------------- */
+        .status-active { border: 3px solid #1890ff !important; background-color: #f0faff; box-shadow: 0 4px 8px rgba(24, 144, 255, 0.2); border-radius: 6px; }
+        .status-extended { border: 3px solid #52c41a !important; background-color: #f6ffed; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(82, 196, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); } }
-        .time-over-yellow { border-top-color: #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
+        .time-over-yellow { border: 3px solid #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
         @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
-        .time-over-red { border-top-color: #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
+        .time-over-red { border: 3px solid #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); } }
+
+        /* 応対中（disabled）の入力枠を消してテキスト化 */
+        .status-active input:disabled, 
+        .status-active select:disabled, 
+        .status-active textarea:disabled {
+            background-color: transparent !important;
+            border: none !important;
+            color: #111 !important;
+            font-weight: 900 !important;
+            padding: 0 !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            opacity: 1; /* iOSでの色褪せ防止 */
+        }
+        /* 応対中テキストのサイズ強調 */
+        .status-active input.c-name:disabled { font-size: 1.2rem !important; color: #0056b3 !important; }
+        .status-active .c-table-input:disabled, 
+        .status-active .c-table-select:disabled { font-size: 1.3rem !important; color: var(--primary-color) !important; }
+        .status-active select.c-content:disabled { font-size: 1.1rem !important; color: #333 !important; margin-top: 2px; }
+        .status-active input.c-schedule:disabled { font-size: 1.1rem !important; color: #d84315 !important; }
+        .status-active textarea.c-memo:disabled { font-size: 0.85rem !important; color: #555 !important; height: auto; margin-top: 2px; }
+        
+        /* 応対中は不要なボタンを隠す */
+        .status-active .btn-clear-name,
+        .status-active .btn-schedule-ok { display: none !important; }
+        /* --------------------------------------------------- */
 
         .input-group { display: flex; flex-direction: column; gap: 0; }
         .input-group label { font-size: 0.6rem; font-weight: bold; color: #666; margin-bottom: 1px;}
@@ -40,10 +72,8 @@
         input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
         
         input.c-name { font-weight: 900 !important; color: #0056b3 !important; font-size: 0.9rem !important; }
-
         .card-top-layout { display: flex; gap: 4px; height: 65px; }
         .table-side { flex: 0 0 95px; display: flex; flex-direction: column; }
-        /* 卓Noのテキスト入力とセレクトボックスのスタイル */
         .c-table-input { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 2px !important; text-align: center; }
         .c-table-select { font-size: 0.95rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 !important; text-align: center; border-left: none; }
         
@@ -58,14 +88,13 @@
         .btn-extend { background: #faad14; display: none; }
         .btn-clear-name { width: 18px; height: 18px; flex: none; background: #999; color: white; border: none; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; margin-left: 2px; padding: 0; }
         
-        /* 時間決定ボタン（文字入り） */
         .btn-schedule-ok { width: 36px; height: 22px; flex: none; background: #4CAF50; color: white; border: none; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; padding: 0; }
         
         .visitor-form { background: #fff; padding: 6px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
         .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 4px; padding: 5px; font-size: 0.85rem; font-weight: bold;}
         .visitor-card { background: white; padding: 0; border-left: 4px solid var(--primary-color); border-radius: 3px; font-size: 0.75rem; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-bottom: 6px; display: flex; align-items: stretch; overflow: hidden; }
         .visitor-card.is-reserved { border-left-color: #ff9800; }
-        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(40px, 20%, 55px); flex: none; font-size: clamp(0.9rem, 2.5vw, 1.2rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; }
+        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(40px, 20%, 55px); flex: none; font-size: clamp(0.9rem, 2.5vw, 1.2rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; text-align: center;}
         .is-reserved .v-table-big-box { background: #fff9c4; }
         .v-info-box { flex: 1; min-width: 0; padding: 4px 6px; position: relative; }
         textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 4px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 2px; padding: 2px; background: #fdfdfd; }
@@ -138,7 +167,6 @@
             <tbody id="log-table-body"></tbody>
         </table>
     </div>
-
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -259,12 +287,9 @@
             document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
             document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
             document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            
-            // 決定ボタンのクリックイベント
             document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => updateSchedule(i, document.getElementById(`c-schedule-${i}`)));
         }
     }
-
     onSnapshot(collection(db, "counters"), (snapshot) => { snapshot.forEach((docSnap) => { updateCardUI(docSnap.id, docSnap.data()); }); });
 
     const qVisitors = query(collection(db, "visitors"), orderBy("createdAt", "asc"));
@@ -366,7 +391,7 @@
     window.updateSchedule = async (id, inputEl) => {
         const val = inputEl.value; if (!val) return; 
         if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
-            if(confirm(`終了予定を【${val}】で確定しますか？`)) { await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val }); } else { inputEl.value = ""; }
+            if(confirm(`終了予定を【${val}】で確定しますか？\n※確定後は変更できません`)) { await updateDoc(doc(db, "counters", String(id)), { scheduledEndTime: val }); } else { inputEl.value = ""; }
         } else { alert("開始ボタンを押すと保存されます"); }
     };
 
