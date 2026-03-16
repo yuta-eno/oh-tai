@@ -50,7 +50,7 @@
         .status-active input.c-schedule:disabled { font-size: 1.2rem !important; color: #d84315 !important; }
         .status-active textarea.c-memo:disabled { font-size: 0.9rem !important; color: #555 !important; height: auto; margin-top: 2px; }
         
-        .status-active .btn-reset-table, .status-active .btn-schedule-ok { display: none !important; }
+        .status-active .btn-reset-table { display: none !important; }
 
         .input-group { display: flex; flex-direction: column; gap: 0; }
         .input-group label { font-size: 0.65rem; font-weight: bold; color: #666; margin-bottom: 2px;}
@@ -71,7 +71,6 @@
         button:active { opacity: 0.7; transform: scale(0.98); }
         .btn-start { background: #1890ff; padding: 10px 0; font-size: 0.95rem; }
         
-        /* ★ここで延長と終了ボタンを初期状態で隠す設定を復活させました */
         .btn-end { background: #52c41a; display: none; }
         .btn-extend { background: #faad14; display: none; }
         
@@ -232,18 +231,6 @@
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
         requestWakeLock();
     };
-
-    window.enableSound = function() {
-        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        audioCtx.resume().then(() => {
-            window.playFamima(); isSoundEnabled = true;
-            const btn = document.getElementById('btn-enable-sound');
-            btn.innerText = "🔊 通知音ON"; btn.style.background = "#4CAF50"; btn.style.animation = "none";
-            setTimeout(() => { btn.style.display = 'none'; }, 3000);
-        });
-        requestWakeLock();
-    };
-
     function createCards() {
         const grid = document.getElementById('counter-grid');
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
@@ -370,7 +357,6 @@
             document.getElementById(`move-v-${docSnap.id}`).addEventListener('click', () => window.openMoveModal(docSnap.id));
         });
     });
-
     const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"));
     onSnapshot(qLogs, (snapshot) => {
         const tbody = document.getElementById('log-table-body'); tbody.innerHTML = ""; localLogs = [];
@@ -451,7 +437,6 @@
         let updateData = { content: v.content, memo: newMemo };
         if(v.table) updateData.table = v.table;
         
-        // ★ setDoc + merge: true に変更（まだDBに枠がない場合でも安全に作成するため）
         await setDoc(doc(db, "counters", String(panelId)), updateData, { merge: true });
         await deleteDoc(doc(db, "visitors", vId));
     }
@@ -461,13 +446,11 @@
         const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
         const schedule = document.getElementById(`c-schedule-${id}`).value; const dbarai = document.getElementById(`c-dbarai-${id}`).checked; const dcard = document.getElementById(`c-dcard-${id}`).checked; const memo = document.getElementById(`c-memo-${id}`).value;
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
-        // ★ setDoc + merge: true に変更
         await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard }, { merge: true });
     };
 
     window.resetTable = async (id) => {
         if(!confirm("この枠の入力内容をすべてクリアしますか？")) return;
-        // ★ setDoc + merge: true に変更
         await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", status: "", startTime: "", dbarai: false, dcard: false }, { merge: true });
     };
 
