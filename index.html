@@ -6,180 +6,346 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Ｒ１２２管理ボード</title>
+    <title>Ｒ１２２統合管理ボード</title>
     
+    <!-- スマホ・タブレットでドラッグ＆ドロップを可能にする魔法のスクリプト -->
     <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
 
     <style>
-        :root { --primary-color: #cc0000; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-color: #333; }
-        body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; touch-action: manipulation; }
-        header { background: var(--primary-color); color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { margin: 0; font-size: 1rem; font-weight: normal; }
+        :root { 
+            --primary-color: #cc0000; 
+            --primary-hover: #a30000;
+            --bg-color: #f3f4f6; 
+            --card-bg: #ffffff; 
+            --text-main: #1f2937; 
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --win-color: #10b981;
+            --loss-color: #6b7280;
+            --active-panel-border: #3b82f6;
+            --active-panel-bg: #eff6ff;
+            --extended-panel-border: #10b981;
+            --extended-panel-bg: #f0fdf4;
+        }
+
+        body { 
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 0; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            touch-action: manipulation; 
+        }
+
+        /* ヘッダー */
+        header { 
+            background: var(--card-bg); 
+            color: var(--text-main); 
+            padding: 8px 16px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            border-top: 4px solid var(--primary-color);
+            z-index: 10;
+        }
+        h1 { margin: 0; font-size: 1.1rem; font-weight: 900; letter-spacing: 1px; color: var(--primary-color); }
+        
         .header-actions { display: flex; gap: 8px; }
-        .header-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
-        .header-btn:active { background: rgba(255,255,255,0.4); }
-        .btn-delete-log { background: #ff4d4f; border-color: #ff4d4f; }
-        #btn-enable-sound { background: #ff9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; display: none; animation: flash 2s infinite; border: 2px solid white; }
+        .header-btn { 
+            background: #f3f4f6; color: var(--text-main); 
+            border: 1px solid var(--border-color); padding: 6px 12px; 
+            border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; 
+            transition: all 0.2s; 
+        }
+        .header-btn:hover { background: #e5e7eb; }
+        .header-btn:active { transform: scale(0.97); }
+        .btn-delete-log { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+        .btn-delete-log:hover { background: #fee2e2; }
+        #btn-enable-sound { background: #f59e0b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; display: none; animation: flash 2s infinite; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         
-        .main-dashboard { display: flex; flex-wrap: nowrap; gap: 8px; padding: 8px; align-items: flex-start; }
-        .counters-section { flex: 1 1 auto; width: 75%; }
-        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-        @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 900px) { .main-dashboard { flex-wrap: wrap; } .counters-section { width: 100%; } .grid-container { grid-template-columns: repeat(3, 1fr); } }
+        /* メインレイアウト */
+        .main-dashboard { display: flex; flex-wrap: nowrap; gap: 12px; padding: 12px; align-items: flex-start; height: calc(100vh - 55px); box-sizing: border-box; }
         
-        .waiting-section { flex: 0 0 25%; min-width: 260px; background: #e0e0e0; padding: 8px; border-radius: 4px; position: sticky; top: 5px; max-height: 98vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
-        h2 { font-size: 0.9rem; margin: 0 0 8px 0; padding: 8px; color: white; background: #555; border-radius: 4px; text-align: center; }
+        /* リストセクション（左側） */
+        .waiting-section { 
+            flex: 0 0 260px; 
+            background: var(--card-bg); 
+            padding: 12px; 
+            border-radius: 8px; 
+            height: 100%; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; 
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05); 
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+        }
+        h2 { font-size: 0.95rem; margin: 0 0 10px 0; padding-bottom: 6px; color: var(--text-main); border-bottom: 2px solid var(--border-color); font-weight: 900; }
         
-        .card { background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 6px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #ddd; border-top: 4px solid #bbb; transition: 0.2s; }
+        /* パネルセクション（右側）- 10個以上収まるように調整 */
+        .counters-section { flex: 1 1 auto; height: 100%; overflow-y: auto; padding-right: 5px; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
         
-        .status-active { border: 4px solid #1890ff !important; background-color: #f0faff; box-shadow: 0 4px 8px rgba(24, 144, 255, 0.2); border-radius: 6px; }
-        .status-extended { border: 4px solid #52c41a !important; background-color: #f6ffed; animation: pulse-green 2s infinite; }
-        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(82, 196, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(82, 196, 26, 0); } }
-        .time-over-yellow { border: 4px solid #faad14 !important; background-color: #fffbe6 !important; animation: pulse-yellow 2s infinite !important; }
-        @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(250, 173, 20, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); } }
-        .time-over-red { border: 4px solid #ff4d4f !important; background-color: #fff2f0 !important; animation: pulse-red 2s infinite !important; }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); } }
+        @media (max-width: 900px) { 
+            .main-dashboard { flex-wrap: wrap; height: auto; } 
+            .counters-section, .waiting-section { width: 100%; flex: none; height: auto; overflow: visible; } 
+        }
 
-        .drag-over { border: 4px dashed #1890ff !important; background-color: #e6f7ff !important; opacity: 0.8; transform: scale(0.98); }
+        /* 汎用フォームパーツのコンパクト化 */
+        .input-group { display: flex; flex-direction: column; gap: 2px; }
+        .input-group label { font-size: 0.65rem; font-weight: bold; color: var(--text-muted); margin-bottom: 0; }
+        input, select, textarea { 
+            padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 4px; 
+            font-size: 0.85rem; width: 100%; box-sizing: border-box; background: #fff;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--active-panel-border); }
+        input:disabled, select:disabled { background-color: #f9fafb; color: #9ca3af; border-color: #f3f4f6; }
 
-        .status-active input:disabled, .status-active select:disabled, .status-active textarea:disabled { background-color: transparent !important; border: none !important; color: #111 !important; font-weight: 900 !important; padding: 0 !important; -webkit-appearance: none; -moz-appearance: none; appearance: none; opacity: 1; }
-        .status-active input.c-name:disabled { font-size: 1.3rem !important; color: #0056b3 !important; }
-        .status-active .c-table-input:disabled, .status-active .c-table-select:disabled { font-size: 1.4rem !important; color: var(--primary-color) !important; }
-        .status-active select.c-content:disabled { font-size: 1.2rem !important; color: #333 !important; margin-top: 2px; }
-        .status-active input.c-schedule:disabled { font-size: 1.2rem !important; color: #d84315 !important; }
-        .status-active textarea.c-memo:disabled { font-size: 0.9rem !important; color: #555 !important; height: auto; margin-top: 2px; }
+        /* 当日発券フォーム */
+        .visitor-form { background: #f9fafb; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+        .btn-arrival { background: var(--text-main); color: white; width: 100%; margin-top: 8px; padding: 8px; font-size: 0.9rem; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-arrival:active { transform: scale(0.98); background: #374151; }
         
-        .status-active .btn-reset-table { display: none !important; }
+        /* 待合カード */
+        .visitor-card { 
+            background: white; border: 1px solid var(--border-color); border-left: 5px solid var(--primary-color); 
+            border-radius: 6px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 8px; 
+            display: flex; flex-direction: column; overflow: hidden; cursor: grab; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .visitor-card:hover { transform: translateY(-2px); box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
+        .visitor-card:active { cursor: grabbing; transform: scale(0.98); }
+        .visitor-card.is-reserved { border-left-color: #f59e0b; }
+        .v-card-top { display: flex; align-items: stretch; width: 100%; }
+        .v-table-big-box { background: #f3f4f6; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; width: 45px; flex: none; font-size: 1.1rem; font-weight: 900; color: var(--text-main); }
+        .is-reserved .v-table-big-box { background: #fef3c7; }
+        .v-info-box { flex: 1; min-width: 0; padding: 6px 8px; position: relative; }
+        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 6px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; background: #f9fafb; cursor: text;}
+        .btn-delete-visitor { position: absolute; top: 4px; right: 4px; background: #e5e7eb; color: var(--text-muted); width: 22px; height: 22px; padding: 0; font-size: 12px; font-weight: bold; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-delete-visitor:hover { background: #fecaca; color: #dc2626; }
+        .btn-move-to-panel { width: 100%; padding: 8px; background: #f3f4f6; color: var(--text-main); border: none; border-top: 1px solid var(--border-color); font-weight: bold; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .btn-move-to-panel:hover { background: #e5e7eb; }
+        .btn-move-to-panel:active { background: #d1d5db; }
 
-        .input-group { display: flex; flex-direction: column; gap: 0; }
-        .input-group label { font-size: 0.65rem; font-weight: bold; color: #666; margin-bottom: 2px;}
-        input, select, textarea { padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; height: auto; width: 100%; box-sizing: border-box; }
-        input:disabled, select:disabled { background-color: #e0e0e0; color: #555; }
+        /* カウンターパネル（コンパクト化） */
+        .card { 
+            background: var(--card-bg); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+            padding: 8px; display: flex; flex-direction: column; gap: 6px; 
+            border: 1px solid var(--border-color); transition: all 0.2s; 
+        }
         
-        input.c-name { font-weight: 900 !important; color: #0056b3 !important; font-size: 1rem !important; }
-        .card-top-layout { display: flex; gap: 6px; height: 75px; }
-        .table-side { flex: 0 0 95px; display: flex; flex-direction: column; }
-        .c-table-input { font-size: 1.1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 4px !important; text-align: center; }
-        .c-table-select { font-size: 1rem !important; font-weight: 700 !important; color: var(--primary-color); border: 2px solid #ffcccc; background: #fffafa; padding: 0 2px !important; text-align: center; border-left: none; }
+        /* 応対中ステータス */
+        .status-active { border: 2px solid var(--active-panel-border) !important; background-color: var(--active-panel-bg); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+        .status-extended { border: 2px solid var(--extended-panel-border) !important; background-color: var(--extended-panel-bg); animation: pulse-green 2s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .time-over-yellow { border: 2px solid #f59e0b !important; background-color: #fffbeb !important; animation: pulse-yellow 2s infinite !important; }
+        @keyframes pulse-yellow { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+        .time-over-red { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; animation: pulse-red 2s infinite !important; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .drag-over { border: 2px dashed var(--active-panel-border) !important; background-color: #e0f2fe !important; opacity: 0.9; transform: scale(0.99); }
+
+        /* 応対中テキスト化 */
+        .status-active input:disabled, .status-active select:disabled, .status-active textarea:disabled { 
+            background-color: transparent !important; border: none !important; color: var(--text-main) !important; 
+            font-weight: 900 !important; padding: 0 !important; -webkit-appearance: none; appearance: none; opacity: 1; 
+        }
+        .status-active input.c-name:disabled { font-size: 1.1rem !important; color: #1e3a8a !important; }
+        .status-active .c-table-input:disabled, .status-active .c-table-select:disabled { font-size: 1.2rem !important; color: var(--primary-color) !important; }
+        .status-active select.c-content:disabled { font-size: 1rem !important; margin-top: 2px; }
+        .status-active input.c-schedule:disabled { font-size: 1rem !important; color: #b45309 !important; }
+        .status-active textarea.c-memo:disabled { font-size: 0.85rem !important; color: var(--text-muted) !important; height: auto; margin-top: 2px; }
+        .status-active .btn-reset-table, .status-active .btn-schedule-ok { display: none !important; }
+
+        /* パネル内部品 */
+        input.c-name { font-weight: bold; font-size: 0.95rem; }
+        .card-top-layout { display: flex; gap: 8px; }
+        .table-side { flex: 0 0 80px; }
+        .c-table-input { font-size: 1rem !important; font-weight: 900; color: var(--primary-color); border: 2px solid #fca5a5; background: #fff5f5; text-align: center; border-radius: 4px 0 0 4px; padding: 4px 2px !important; }
+        .c-table-input:focus { border-color: var(--primary-color); }
+        .c-table-select { font-size: 0.9rem !important; font-weight: 900; color: var(--primary-color); border: 2px solid #fca5a5; background: #fff5f5; text-align: center; border-left: none; border-radius: 0 4px 4px 0; padding: 4px 0 !important; }
+        .c-table-select:focus { border-color: var(--primary-color); }
         
         .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-        textarea.c-memo { resize: none; height: 2.2em; line-height: 1.2; font-size: 0.85rem; }
-        .timer-display { font-size: 1.2rem; font-weight: bold; text-align: center; font-family: monospace; color: #333; margin: 2px 0; }
-        .btn-row { display: flex; gap: 4px; margin-top: 2px; }
-        button { flex: 1; padding: 8px 0; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85rem; }
-        button:active { opacity: 0.7; transform: scale(0.98); }
-        .btn-start { background: #1890ff; padding: 10px 0; font-size: 0.95rem; }
+        textarea.c-memo { resize: none; height: 2em; line-height: 1.2; font-size: 0.8rem; }
+        .timer-display { font-size: 1.1rem; font-weight: 900; text-align: center; font-family: monospace; color: var(--text-main); margin: 2px 0; letter-spacing: 1px; }
         
-        .btn-end { background: #52c41a; display: none; }
-        .btn-extend { background: #faad14; display: none; }
+        /* ボタン類 */
+        .btn-row { display: flex; gap: 4px; margin-top: auto; }
+        .btn-row button { flex: 1; padding: 6px 0; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85rem; transition: transform 0.1s, opacity 0.2s; }
+        .btn-row button:active { transform: scale(0.96); }
+        .btn-start { background: var(--active-panel-border); }
+        .btn-end { background: var(--text-main); display: none; }
+        .btn-extend { background: #f59e0b; display: none; }
         
-        .btn-reset-table { width: 44px; height: 26px; flex: none; background: #999; color: white; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; margin-left: 2px; padding: 0; cursor: pointer; }
-        .btn-schedule-ok { width: 44px; height: 26px; flex: none; background: #4CAF50; color: white; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; padding: 0; }
+        .btn-reset-table { width: 36px; height: 100%; flex: none; background: #e5e7eb; color: var(--text-muted); border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s; padding: 0; }
+        .btn-reset-table:hover { background: #d1d5db; color: var(--text-main); }
+        .btn-schedule-ok { width: 36px; height: 100%; flex: none; background: var(--win-color); color: white; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; cursor: pointer; padding: 0; }
         
-        .visitor-form { background: #fff; padding: 8px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #bbb; }
-        .btn-arrival { background: var(--primary-color); width: 100%; margin-top: 6px; padding: 8px; font-size: 0.95rem; font-weight: bold; border-radius: 4px; }
+        /* ★タップ追加式の新商材エリア（省スペース化） */
+        .c-tags-wrapper { background: #f9fafb; border: 1px solid var(--border-color); border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
         
-        .visitor-card { background: white; padding: 0; border-left: 5px solid var(--primary-color); border-radius: 4px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.15); margin-bottom: 8px; display: flex; flex-direction: column; overflow: hidden; cursor: grab; }
-        .visitor-card:active { cursor: grabbing; }
-        .visitor-card.is-reserved { border-left-color: #ff9800; }
-        .v-card-top { display: flex; align-items: stretch; width: 100%; }
-        .v-table-big-box { background: #f0f0f0; border-right: 1px solid #999; display: flex; align-items: center; justify-content: center; width: clamp(45px, 20%, 65px); flex: none; font-size: clamp(1rem, 2.5vw, 1.4rem); font-weight: 900; color: #000; line-height: 1.1; padding: 0 2px; text-align: center;}
-        .is-reserved .v-table-big-box { background: #fff9c4; }
-        .v-info-box { flex: 1; min-width: 0; padding: 6px 8px; position: relative; }
-        textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.5em; margin-top: 6px; font-size: 0.85rem; border: 1px solid #ddd; border-radius: 4px; padding: 4px; background: #fdfdfd; cursor: text;}
-        
-        .btn-delete-visitor { position: absolute; top: 4px; right: 4px; background: #ccc; color: #333; width: 24px; height: 24px; padding: 0; font-size: 14px; font-weight: bold; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; border: none; }
-        .btn-move-to-panel { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; font-weight: bold; font-size: 1rem; }
-        .btn-move-to-panel:active { background: #388E3C; }
+        /* 追加された商材（提案中） */
+        .c-tags-active-area { display: flex; flex-direction: column; gap: 3px; max-height: 80px; overflow-y: auto; }
+        .c-tag-item { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .c-tag-item.win { border-color: var(--win-color); background: var(--extended-panel-bg); }
+        .c-tag-item.loss { border-color: var(--loss-color); background: #f3f4f6; color: var(--text-muted); }
+        .c-tag-name { font-weight: bold; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .c-tag-actions { display: flex; gap: 2px; }
+        .c-tag-btn { border: 1px solid var(--border-color); background: #fff; border-radius: 2px; cursor: pointer; font-size: 0.75rem; padding: 2px 8px; font-weight: bold; transition: 0.1s; }
+        .c-tag-btn.win:hover { border-color: var(--win-color); color: var(--win-color); background: var(--extended-panel-bg); }
+        .c-tag-btn.loss:hover { border-color: var(--loss-color); color: var(--loss-color); background: #f3f4f6; }
+        .c-tag-btn.win:active, .c-tag-item.win .c-tag-btn.win { background: var(--win-color); color: white; border-color: var(--win-color); }
+        .c-tag-btn.loss:active, .c-tag-item.loss .c-tag-btn.loss { background: var(--loss-color); color: white; border-color: var(--loss-color); }
+        .c-tag-btn.del { color: #dc2626; border: none; padding: 2px 4px; background: transparent; }
+        .c-tag-btn.del:hover { background: #fef2f2; }
 
-        .log-section { border-top: 2px solid #ddd; background: #fafafa; padding: 10px; margin-top: 10px; }
-        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; background: white; }
-        .log-table th, .log-table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        .log-table th { background-color: #eee; white-space: nowrap; }
-        #setup-btn { background: #333; color: #fff; padding: 5px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none;}
+        /* 追加候補プール（アコーディオン） */
+        .c-tags-accordion-summary { font-size: 0.75rem; font-weight: bold; color: var(--text-muted); cursor: pointer; outline: none; user-select: none; }
+        .c-tags-accordion-summary:hover { color: var(--text-main); }
+        .c-tags-pool { display: flex; flex-wrap: wrap; gap: 4px; border-top: 1px dashed #d1d5db; padding-top: 6px; max-height: 60px; overflow-y: auto; margin-top: 6px;}
+        .pool-tag-btn { 
+            background: #fff; border: 1px solid var(--border-color); color: var(--text-main); 
+            border-radius: 12px; padding: 2px 8px; font-size: 0.75rem; font-weight: bold; 
+            cursor: pointer; transition: all 0.1s; display: flex; align-items: center; gap: 2px;
+        }
+        .pool-tag-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+        .pool-tag-btn:active { transform: scale(0.95); background: #e5e7eb; }
+        .pool-tag-btn::before { content: '+'; color: var(--primary-color); font-weight: 900; }
         
-        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
-        .modal-content { background: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .status-active .c-tags-wrapper { background: transparent; border-color: rgba(59, 130, 246, 0.2); }
+
+        /* ログセクション */
+        .log-section { background: var(--card-bg); padding: 12px; margin: 0 12px 12px 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+        .log-section-title { font-size: 0.95rem; font-weight: 900; margin-bottom: 8px; color: var(--text-main); }
+        .table-wrapper { overflow-x: auto; }
+        table.log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 800px; }
+        .log-table th, .log-table td { border-bottom: 1px solid var(--border-color); padding: 6px 8px; text-align: left; }
+        .log-table th { background-color: #f9fafb; font-weight: bold; color: var(--text-muted); white-space: nowrap; }
+        .log-table tr:hover td { background-color: #f9fafb; }
+        
+        #setup-btn { background: #374151; color: #fff; padding: 4px 10px; margin-left:10px; cursor: pointer; display: none; border-radius:4px; border:none; font-weight:bold; font-size:0.8rem;}
+        
+        /* モーダル共通 */
+        #modal-overlay, #product-settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; max-height: 80vh;}
+        
+        /* 商材設定モーダル専用 */
+        #product-settings-list {
+            list-style: none; padding: 0; margin: 0 0 15px 0; overflow-y: auto; flex: 1; text-align: left;
+            border: 1px solid var(--border-color); border-radius: 6px; background: #f9fafb;
+        }
+        #product-settings-list li {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color);
+        }
+        #product-settings-list li:last-child { border-bottom: none; }
+        .btn-delete-product {
+            background: #fee2e2; color: #dc2626; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; transition: 0.1s;
+        }
+        .btn-delete-product:hover { background: #fca5a5; }
     </style>
 </head>
 <body>
     <header>
         <div style="display:flex; align-items:center; gap:10px;">
-            <h1>Ｒ１２２管理ボード</h1>
-            <button id="btn-enable-sound" onclick="enableSound()">🔊 音をオンにする</button>
-            <button id="setup-btn" onclick="initFirestoreData()">⚠️初回初期化</button>
+            <h1>Ｒ１２２統合管理ボード</h1>
+            <button id="btn-enable-sound" onclick="enableSound()">🔊 通知音ON</button>
+            <button id="setup-btn" onclick="initFirestoreData()">⚠️初回設定</button>
         </div>
         <div class="header-actions">
+            <button class="header-btn" onclick="openProductSettings()">⚙️ 商材設定</button>
             <button class="header-btn" onclick="location.reload()">🔄 リロード</button>
-            <button class="header-btn btn-delete-log" onclick="clearAllLogs()">🗑️ ログ削除</button>
             <button class="header-btn" onclick="exportLogsToCSV()">📥 CSV出力</button>
+            <button class="header-btn btn-delete-log" onclick="clearAllLogs()">🗑️ ログ削除</button>
         </div>
     </header>
 
     <div class="main-dashboard">
-        <div class="counters-section">
-            <div id="counter-grid" class="grid-container"></div>
-        </div>
+        <!-- 左：リスト -->
         <div class="waiting-section">
             <h2>未対応／来店者リスト</h2>
             <div class="visitor-form">
-                <div style="display:flex; gap:6px; align-items:flex-end;">
-                    <div class="input-group" style="flex:3; min-width:0;"><label>お名前</label><input type="text" id="v-name" placeholder="名"></div>
-                    <div class="input-group" style="flex:1.8; min-width:0;">
+                <div class="input-group" style="margin-bottom: 6px;"><label>お名前</label><input type="text" id="v-name" placeholder="例: 山田様（名字のみ）"></div>
+                <div style="display:flex; gap:6px; margin-bottom: 6px;">
+                    <div class="input-group" style="flex:1;">
                         <label>卓No</label>
                         <div style="display:flex; gap:0;">
-                            <input type="text" id="v-table-num" style="padding:4px; flex:1.5; font-size:1rem; min-width:0;" placeholder="No">
-                            <select id="v-table-type" style="padding:0; flex:1; font-size:1rem; border-left:none;">
+                            <input type="text" id="v-table-num" class="c-table-input" style="padding:4px; font-size:1rem;" placeholder="No">
+                            <select id="v-table-type" class="c-table-select" style="padding:0; font-size:0.9rem;">
                                 <option value="T">T</option><option value="C">C</option>
                             </select>
                         </div>
                     </div>
-                    <div class="input-group" style="flex:3; min-width:0;"><label>用件</label>
-                        <select id="v-content" style="padding:4px 0;">
+                    <div class="input-group" style="flex:1.5;"><label>用件</label>
+                        <select id="v-content">
                             <option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
                         </select>
                     </div>
                 </div>
-                <div style="display:flex; gap:10px; align-items:center; margin-top:8px; margin-bottom:4px;">
-                    <label style="font-size:0.8rem; font-weight:bold; color:#d84315; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                <div class="input-group" style="margin-bottom: 6px;"><label>備考</label><textarea id="v-memo" class="v-memo" placeholder="ご要望など" style="height: 2.2em;"></textarea></div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.8rem; font-weight:bold; color:#b45309; cursor:pointer; display:flex; align-items:center; gap:4px;">
                         <input type="checkbox" id="v-is-reserved" style="margin:0; width:16px; height:16px;" onchange="document.getElementById('v-reserve-time').style.display = this.checked ? 'block' : 'none';">予約あり
                     </label>
-                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.9rem; padding:2px 4px; width:100px;">
+                    <input type="time" id="v-reserve-time" style="display:none; font-size:0.85rem; padding:2px; width:100px;">
                 </div>
-                <div class="input-group"><label>備考</label><textarea id="v-memo" class="v-memo" placeholder="【予約】あり 等"></textarea></div>
-                <button class="btn-arrival" onclick="addVisitorToDb()">来店登録（受付）</button>
+                <button class="btn-arrival" onclick="addVisitorToDb()">来店登録（発券）</button>
             </div>
             <div id="waiting-list"></div>
+        </div>
+
+        <!-- 右：パネル -->
+        <div class="counters-section">
+            <div id="counter-grid" class="grid-container"></div>
         </div>
     </div>
     
     <div class="log-section">
-        <table class="log-table">
-            <thead>
-                <tr>
-                    <th width="60">開始時刻</th><th width="60">終了時刻</th><th width="80">担当者</th><th width="30">No.</th><th width="60">予定</th><th width="90">用件</th><th>備考</th><th width="50">d払い</th><th width="50">dカード</th><th width="60">所要時間</th><th width="40">延長</th>
-                </tr>
-            </thead>
-            <tbody id="log-table-body"></tbody>
-        </table>
+        <div class="log-section-title">本日の応対ログ</div>
+        <div class="table-wrapper">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="30">No.</th><th width="50">予定</th><th width="90">用件</th><th>備考</th><th width="110">ご成約</th><th width="110">失注</th><th width="50">時間</th><th width="30">延長</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body"></tbody>
+            </table>
+        </div>
     </div>
 
+    <!-- 案内先選択モーダル -->
     <div id="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
         <div class="modal-content">
-            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 1.2rem;">空き枠へ案内</h3>
-            <p id="modal-visitor-name" style="font-weight: 900; font-size: 1.4rem; color: var(--primary-color); margin: 0 0 20px 0;"></p>
-            <select id="modal-panel-select" style="width: 100%; padding: 12px; font-size: 1.3rem; margin-bottom: 25px; border: 2px solid #ccc; border-radius: 6px; text-align: center; font-weight:bold;"></select>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background: #999; color: white; padding: 14px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 1.1rem;">キャンセル</button>
-                <button onclick="executeMoveToPanelFromModal()" style="background: #1890ff; color: white; padding: 14px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 1.1rem;">決定</button>
+            <h3 style="margin: 0 0 10px 0; color: var(--text-main); font-size: 1.1rem;">空き枠へ案内</h3>
+            <p id="modal-visitor-name" style="font-weight: 900; font-size: 1.3rem; color: var(--primary-color); margin: 0 0 15px 0;"></p>
+            <select id="modal-panel-select" style="width: 100%; padding: 10px; font-size: 1.1rem; margin-bottom: 20px; border: 2px solid var(--border-color); border-radius: 6px; text-align: center; font-weight:bold; background:#f9fafb;"></select>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="document.getElementById('modal-overlay').style.display='none'" style="background: #e5e7eb; color: var(--text-muted); padding: 10px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 0.95rem; cursor:pointer;">キャンセル</button>
+                <button onclick="executeMoveToPanelFromModal()" style="background: var(--active-panel-border); color: white; padding: 10px; flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 0.95rem; cursor:pointer;">決定</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ★商材設定モーダル -->
+    <div id="product-settings-modal" onclick="if(event.target===this) this.style.display='none'">
+        <div class="modal-content">
+            <h3 style="margin: 0 0 12px 0; color: var(--text-main); font-size: 1.1rem;">提案商材の設定</h3>
+            <ul id="product-settings-list"></ul>
+            <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                <input type="text" id="new-product-name" placeholder="新しい商材名" style="flex:1;">
+                <button onclick="addNewProduct()" style="background: var(--active-panel-border); color: white; padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor:pointer;">追加</button>
+            </div>
+            <button onclick="closeProductSettings()" style="background: #e5e7eb; color: var(--text-muted); padding: 10px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.95rem; cursor:pointer; width:100%;">閉じる</button>
         </div>
     </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBjVdE9X17QxIMj449VXLiqYwBu79SHDak",
@@ -193,17 +359,22 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const TOTAL_COUNTERS = 15;
+    
+    // ★動的な提案商材リスト（初期値は空、Firestoreから取得）
+    let currentProducts = [];
+
     let localLogs = [];
     let isSoundEnabled = false;
     let wakeLock = null;
-    
     let currentCounters = {};
     let visitorsData = {};
     window.currentMoveVisitorId = null;
 
     const requestWakeLock = async () => {
         try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
-        } catch (err) { console.error(`${err.name}, ${err.message}`); }
+        } catch (err) { 
+            // WakeLock機能が許可されていない環境（iframeなど）のため、エラーを無視します
+        }
     };
     document.addEventListener('visibilitychange', async () => {
         if (wakeLock !== null && document.visibilityState === 'visible') { await requestWakeLock(); }
@@ -231,56 +402,51 @@
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
         requestWakeLock();
     };
+
+    window.enableSound = function() {
+        if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        audioCtx.resume().then(() => {
+            window.playFamima(); isSoundEnabled = true;
+            const btn = document.getElementById('btn-enable-sound');
+            btn.innerText = "🔊 通知音ON"; btn.style.background = "#10b981"; btn.style.animation = "none";
+            setTimeout(() => { btn.style.display = 'none'; }, 3000);
+        });
+        requestWakeLock();
+    };
+
+    // ★商材リストの同期
+    onSnapshot(doc(db, "settings", "products"), (docSnap) => {
+        if (docSnap.exists()) {
+            currentProducts = docSnap.data().items || [];
+        } else {
+            currentProducts = [
+                "光１G", "光１０G", "Ｈ５Ｇ", "ＧＯＬＤ", "ＧＯＬＤ U", 
+                "プラチナ", "でんき", "ガス", "ｄＶＰ", "Amazon", 
+                "MAX", "ポイ活MAX", "Ｓ４", "Pixel"
+            ];
+            setDoc(doc(db, "settings", "products"), { items: currentProducts });
+        }
+        
+        // モーダルが開いていれば更新
+        if (document.getElementById('product-settings-modal').style.display === 'flex') {
+            window.renderProductSettings();
+        }
+        
+        // 全パネルの再描画（商材リストを反映）
+        for (let i = 1; i <= TOTAL_COUNTERS; i++) {
+            if(currentCounters[String(i)]) {
+                updateCardUI(String(i), currentCounters[String(i)]);
+            }
+        }
+    });
+
     function createCards() {
         const grid = document.getElementById('counter-grid');
         for (let i = 1; i <= TOTAL_COUNTERS; i++) {
             const div = document.createElement('div');
             div.className = 'card counter-card';
             div.id = `counter-card-${i}`;
-            div.innerHTML = `
-                <div class="card-top-layout">
-                    <div class="table-side input-group">
-                        <label>卓No</label>
-                        <div style="display:flex; gap:0; height:100%;">
-                            <input type="text" id="c-table-num-${i}" class="c-table-input" style="flex:1.5;" placeholder="No">
-                            <select id="c-table-type-${i}" class="c-table-select" style="flex:1;"><option value="T">T</option><option value="C">C</option></select>
-                        </div>
-                    </div>
-                    <div class="name-time-side">
-                        <div class="input-group">
-                            <label>担当者名</label>
-                            <div style="display:flex; gap:2px;">
-                                <input type="text" id="c-name-${i}" class="c-name" style="flex:1; min-width:0;">
-                                <button id="btn-reset-table-${i}" class="btn-reset-table">ﾘｾｯﾄ</button>
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>終了予定</label>
-                            <div style="display:flex; gap:2px;">
-                                <input type="time" id="c-schedule-${i}" class="c-schedule" step="300" style="flex:1; min-width:0;">
-                                <button id="btn-schedule-ok-${i}" class="btn-schedule-ok">決定</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>応対内容</label>
-                    <select id="c-content-${i}" class="c-content">
-                        <option value="">選択</option><option value="新規契約">新規契約</option><option value="機種変更">機種変更</option><option value="故障・修理">故障・修理</option><option value="料金相談">料金相談</option><option value="プラン変更">プラン変更</option><option value="操作説明">操作説明</option><option value="解約">解約</option><option value="その他">その他</option>
-                    </select>
-                </div>
-                <div style="display:flex; gap:2px; margin:4px 0;">
-                    <label style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.65rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dbarai-${i}" style="width:14px; height:14px; margin:0;">ｄ払初回</label>
-                    <label style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.65rem; font-weight:bold; color:#666;"><input type="checkbox" id="c-dcard-${i}" style="width:14px; height:14px; margin:0;">ｄカ即時</label>
-                </div>
-                <div class="input-group"><label>備考</label><textarea id="c-memo-${i}" class="c-memo"></textarea></div>
-                <div class="timer-display" id="timer-${i}">00:00:00</div>
-                <div class="btn-row">
-                    <button id="btn-start-${i}" class="btn-start">開始</button>
-                    <button id="btn-extend-${i}" class="btn-extend">延長</button>
-                    <button id="btn-end-${i}" class="btn-end">終了</button>
-                </div>
-            `;
+            div.innerHTML = `<div style="text-align:center; padding: 20px; color:#999;">Loading...</div>`;
             grid.appendChild(div);
 
             div.addEventListener('dragover', (e) => {
@@ -295,15 +461,6 @@
                 const vId = e.dataTransfer.getData('text/plain');
                 if (vId) window.executeMoveToPanel(vId, i);
             });
-
-            document.getElementById(`btn-start-${i}`).addEventListener('click', () => startService(i));
-            document.getElementById(`btn-extend-${i}`).addEventListener('click', () => toggleExtend(i));
-            document.getElementById(`btn-end-${i}`).addEventListener('click', () => endService(i));
-            document.getElementById(`btn-reset-table-${i}`).addEventListener('click', () => resetTable(i));
-            document.getElementById(`c-dbarai-${i}`).addEventListener('change', (e) => updateDbarai(i, e.target.checked));
-            document.getElementById(`c-dcard-${i}`).addEventListener('change', (e) => updateDcard(i, e.target.checked));
-            document.getElementById(`c-memo-${i}`).addEventListener('change', (e) => updateMemo(i, e.target.value));
-            document.getElementById(`btn-schedule-ok-${i}`).addEventListener('click', () => updateSchedule(i, document.getElementById(`c-schedule-${i}`)));
         }
     }
 
@@ -340,16 +497,16 @@
                     <div class="v-table-big-box">${v.table ? v.table : ''}</div>
                     <div class="v-info-box">
                         <button class="btn-delete-visitor" id="del-v-${docSnap.id}">×</button>
-                        <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:clamp(4px, 1vw, 8px); padding-right:20px; line-height:1.4;">
-                            <span style="color:#d32f2f; font-weight:bold; font-size:clamp(0.85rem, 1.8vw, 1.1rem); white-space:nowrap;">${v.timeStr}</span>
-                            <span style="font-weight:900; font-size:clamp(1rem, 2.2vw, 1.3rem); color:#000; word-break:break-word;">${v.name} 様</span>
-                            <span style="color:#666; font-size:clamp(0.75rem, 1.5vw, 1rem); word-break:break-word;">${v.content}</span>
-                            ${v.isReserved ? `<span style="background:#d84315; color:white; font-weight:bold; font-size:clamp(0.7rem, 1.5vw, 0.95rem); padding:2px 6px; border-radius:4px; white-space:nowrap; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
+                        <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:clamp(2px, 1vw, 6px); padding-right:18px; line-height:1.3;">
+                            <span style="color:#dc2626; font-weight:bold; font-size:clamp(0.8rem, 1.8vw, 0.95rem); white-space:nowrap;">${v.timeStr}</span>
+                            <span style="font-weight:900; font-size:clamp(1rem, 2.2vw, 1.2rem); color:var(--text-main); word-break:break-word;">${v.name} 様</span>
+                            <span style="color:var(--text-muted); font-size:clamp(0.75rem, 1.5vw, 0.9rem); word-break:break-word;">${v.content}</span>
+                            ${v.isReserved ? `<span style="background:#f59e0b; color:white; font-weight:bold; font-size:0.7rem; padding:2px 4px; border-radius:4px; white-space:nowrap; margin-left:auto;">予 ${v.reserveTime ? v.reserveTime : ''}</span>` : ''}
                         </div>
                         <textarea class="visitor-card-memo" id="memo-v-${docSnap.id}">${v.memo}</textarea>
                     </div>
                 </div>
-                <button class="btn-move-to-panel" id="move-v-${docSnap.id}">➡ 空き枠へ案内する</button>
+                <button class="btn-move-to-panel" id="move-v-${docSnap.id}">➡ 空き枠へ案内</button>
             `;
             listDiv.appendChild(div);
             document.getElementById(`del-v-${docSnap.id}`).addEventListener('click', () => deleteDoc(doc(db, "visitors", docSnap.id)));
@@ -357,6 +514,7 @@
             document.getElementById(`move-v-${docSnap.id}`).addEventListener('click', () => window.openMoveModal(docSnap.id));
         });
     });
+
     const qLogs = query(collection(db, "logs"), orderBy("createdAt", "desc"));
     onSnapshot(qLogs, (snapshot) => {
         const tbody = document.getElementById('log-table-body'); tbody.innerHTML = ""; localLogs = [];
@@ -364,14 +522,25 @@
             const l = docSnap.data(); localLogs.push(l);
             const tr = document.createElement('tr');
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            tr.innerHTML = `<td>${startTimeStr}</td><td>${l.endTime}</td><td>${l.name}</td><td>${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td><td style="color:#555;">${l.memo}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${l.dbarai?"〇":""}</td><td style="text-align:center; font-weight:bold; color:var(--primary-color);">${l.dcard?"〇":""}</td><td style="font-family:monospace;">${l.duration}</td><td style="color:red;">${l.isExtended}</td>`;
+            tr.innerHTML = `
+                <td>${startTimeStr}</td><td>${l.endTime}</td><td><strong>${l.name}</strong></td>
+                <td style="font-weight:bold;">${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td>
+                <td style="color:var(--text-muted); font-size:0.75rem;">${l.memo}</td>
+                <td style="color:var(--win-color); font-weight:bold;">${l.wins || '-'}</td>
+                <td style="color:var(--loss-color);">${l.losses || '-'}</td>
+                <td style="font-family:monospace; font-weight:bold;">${l.duration}</td>
+                <td style="color:#ef4444; font-weight:bold;">${l.isExtended}</td>
+            `;
             tbody.appendChild(tr);
         });
     });
 
     function updateCardUI(id, data) {
         const card = document.getElementById(`counter-card-${id}`);
-        const els = { name: document.getElementById(`c-name-${id}`), tableNum: document.getElementById(`c-table-num-${id}`), tableType: document.getElementById(`c-table-type-${id}`), schedule: document.getElementById(`c-schedule-${id}`), scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`), content: document.getElementById(`c-content-${id}`), dbarai: document.getElementById(`c-dbarai-${id}`), dcard: document.getElementById(`c-dcard-${id}`), memo: document.getElementById(`c-memo-${id}`), start: document.getElementById(`btn-start-${id}`), extend: document.getElementById(`btn-extend-${id}`), end: document.getElementById(`btn-end-${id}`), timer: document.getElementById(`timer-${id}`), resetBtn: document.getElementById(`btn-reset-table-${id}`) };
+        
+        // ★アコーディオンの開閉状態を保持
+        const detailsEl = document.querySelector(`#counter-card-${id} details.c-tags-accordion`);
+        const isDetailsOpen = detailsEl && detailsEl.hasAttribute('open');
         
         let t_val = data.table || ""; let t_num = "", t_type = "T";
         if(t_val) {
@@ -379,21 +548,117 @@
             else if(t_val.endsWith('C')) { t_num = t_val.slice(0, -1); t_type = 'C'; }
             else { t_num = t_val; t_type = 'T'; }
         }
-        if(document.activeElement !== els.name) els.name.value = data.name || "";
-        if(document.activeElement !== els.tableNum) els.tableNum.value = t_num;
-        if(document.activeElement !== els.tableType) els.tableType.value = t_type;
-        if(document.activeElement !== els.schedule) els.schedule.value = data.scheduledEndTime || "";
-        if(document.activeElement !== els.content) els.content.value = data.content || "";
-        if(document.activeElement !== els.dbarai) els.dbarai.checked = data.dbarai || false;
-        if(document.activeElement !== els.dcard) els.dcard.checked = data.dcard || false;
-        if(document.activeElement !== els.memo) els.memo.value = data.memo || "";
+
+        const tags = data.tags || [];
+        // 追加されていない商材をプールに表示
+        const availableProducts = currentProducts.filter(p => !tags.find(t => t.name === p));
         
+        const isFocusName = document.activeElement && document.activeElement.id === `c-name-${id}`;
+        const isFocusTableNum = document.activeElement && document.activeElement.id === `c-table-num-${id}`;
+        const isFocusMemo = document.activeElement && document.activeElement.id === `c-memo-${id}`;
+        
+        const currentName = isFocusName ? document.activeElement.value : (data.name || "");
+        const currentTableNum = isFocusTableNum ? document.activeElement.value : t_num;
+        const currentMemo = isFocusMemo ? document.activeElement.value : (data.memo || "");
+
+        card.innerHTML = `
+            <div class="card-top-layout">
+                <div class="table-side input-group">
+                    <label>卓No</label>
+                    <div style="display:flex; gap:0; height:100%;">
+                        <input type="text" id="c-table-num-${id}" class="c-table-input" value="${currentTableNum}" placeholder="No">
+                        <select id="c-table-type-${id}" class="c-table-select">
+                            <option value="T" ${t_type==='T'?'selected':''}>T</option>
+                            <option value="C" ${t_type==='C'?'selected':''}>C</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="name-time-side">
+                    <div class="input-group">
+                        <label>担当者名</label>
+                        <div style="display:flex; gap:4px;">
+                            <input type="text" id="c-name-${id}" class="c-name" value="${currentName}" placeholder="名前">
+                            <button id="btn-reset-table-${id}" class="btn-reset-table">ﾘｾｯﾄ</button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>終了予定</label>
+                        <div style="display:flex; gap:4px;">
+                            <input type="time" id="c-schedule-${id}" class="c-schedule" step="300" value="${data.scheduledEndTime || ""}">
+                            <button id="btn-schedule-ok-${id}" class="btn-schedule-ok">決定</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>応対内容</label>
+                <select id="c-content-${id}" class="c-content">
+                    <option value="">選択</option>
+                    ${["新規契約", "機種変更", "故障・修理", "料金相談", "プラン変更", "操作説明", "解約", "その他"].map(opt => `<option value="${opt}" ${data.content===opt?'selected':''}>${opt}</option>`).join('')}
+                </select>
+            </div>
+            
+            <div class="input-group" style="margin-top:2px;">
+                <label>提案商材</label>
+                <div class="c-tags-wrapper">
+                    <!-- 選択済みタグ -->
+                    <div class="c-tags-active-area" style="display: ${tags.length > 0 ? 'flex' : 'none'};">
+                        ${tags.map((t, idx) => `
+                            <div class="c-tag-item ${t.status}">
+                                <span class="c-tag-name">${t.name}</span>
+                                <div class="c-tag-actions">
+                                    <button class="c-tag-btn win" onclick="window.updateTagStatus(${id}, ${idx}, 'win')">成約</button>
+                                    <button class="c-tag-btn loss" onclick="window.updateTagStatus(${id}, ${idx}, 'loss')">失注</button>
+                                    <button class="c-tag-btn del" onclick="window.removeTag(${id}, ${idx})"><i class="fa-solid fa-xmark"></i>✕</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <!-- 追加候補チップ（タップで追加） -->
+                    <details class="c-tags-accordion" ${isDetailsOpen ? 'open' : ''}>
+                        <summary class="c-tags-accordion-summary">＋ 商材を追加</summary>
+                        <div class="c-tags-pool">
+                            ${availableProducts.map(p => `<button class="pool-tag-btn" onclick="window.addTag(${id}, '${p}')">${p}</button>`).join('')}
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <div class="input-group"><label>備考</label><textarea id="c-memo-${id}" class="c-memo">${currentMemo}</textarea></div>
+            <div class="timer-display" id="timer-${id}">00:00:00</div>
+            <div class="btn-row">
+                <button id="btn-start-${id}" class="btn-start">開始</button>
+                <button id="btn-extend-${id}" class="btn-extend">延長</button>
+                <button id="btn-end-${id}" class="btn-end">終了</button>
+            </div>
+        `;
+
+        const els = {
+            name: document.getElementById(`c-name-${id}`),
+            tableNum: document.getElementById(`c-table-num-${id}`),
+            tableType: document.getElementById(`c-table-type-${id}`),
+            schedule: document.getElementById(`c-schedule-${id}`),
+            scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`),
+            content: document.getElementById(`c-content-${id}`),
+            memo: document.getElementById(`c-memo-${id}`),
+            start: document.getElementById(`btn-start-${id}`),
+            extend: document.getElementById(`btn-extend-${id}`),
+            end: document.getElementById(`btn-end-${id}`),
+            timer: document.getElementById(`timer-${id}`),
+            resetBtn: document.getElementById(`btn-reset-table-${id}`)
+        };
+
+        if(isFocusName) els.name.focus();
+        if(isFocusTableNum) els.tableNum.focus();
+        if(isFocusMemo) els.memo.focus();
+
         els.schedule.disabled = !!data.scheduledEndTime;
         if (data.scheduledEndTime) { els.scheduleBtn.style.display = "none"; } else { els.scheduleBtn.style.display = "block"; }
         
         card.classList.remove('status-active', 'status-extended', 'time-over-yellow', 'time-over-red');
         if (data.status === 'active' || data.status === 'extended') {
-            card.classList.add('status-active'); if (data.status === 'extended') card.classList.add('status-extended');
+            card.classList.add('status-active'); 
+            if (data.status === 'extended') card.classList.add('status-extended');
             els.name.disabled = true; els.resetBtn.disabled = true; els.tableNum.disabled = true; els.tableType.disabled = true; els.content.disabled = true;
             els.start.style.display = 'none'; els.extend.style.display = 'block'; els.end.style.display = 'block';
             card.dataset.startTime = data.startTime || "";
@@ -402,7 +667,111 @@
             els.start.style.display = 'block'; els.extend.style.display = 'none'; els.end.style.display = 'none';
             els.timer.innerText = "00:00:00"; card.dataset.startTime = "";
         }
+
+        els.start.addEventListener('click', () => startService(id));
+        els.extend.addEventListener('click', () => toggleExtend(id));
+        els.end.addEventListener('click', () => endService(id));
+        els.resetBtn.addEventListener('click', () => resetTable(id));
+        els.scheduleBtn.addEventListener('click', () => updateSchedule(id, els.schedule));
+        
+        els.memo.addEventListener('change', (e) => {
+            if (card.classList.contains('status-active')) { setDoc(doc(db, "counters", String(id)), { memo: e.target.value }, { merge: true }); }
+        });
     }
+
+    // ★商材設定モーダル関連
+    window.openProductSettings = () => {
+        window.renderProductSettings();
+        document.getElementById('product-settings-modal').style.display = 'flex';
+    };
+
+    window.closeProductSettings = () => {
+        document.getElementById('product-settings-modal').style.display = 'none';
+    };
+
+    window.renderProductSettings = () => {
+        const list = document.getElementById('product-settings-list');
+        list.innerHTML = currentProducts.map((p, i) => `
+            <li>
+                <span style="font-weight:bold; color:var(--text-main);">${p}</span>
+                <button class="btn-delete-product" onclick="window.deleteProduct(${i})">削除</button>
+            </li>
+        `).join('');
+    };
+
+    window.addNewProduct = async () => {
+        const input = document.getElementById('new-product-name');
+        const name = input.value.trim();
+        if (name && !currentProducts.includes(name)) {
+            currentProducts.push(name);
+            await setDoc(doc(db, "settings", "products"), { items: currentProducts });
+            input.value = '';
+        }
+    };
+
+    window.deleteProduct = async (index) => {
+        if(confirm(`「${currentProducts[index]}」を削除しますか？\n※現在パネルで選択中のタグはそのまま残ります。`)) {
+            currentProducts.splice(index, 1);
+            await setDoc(doc(db, "settings", "products"), { items: currentProducts });
+        }
+    };
+
+    // ★現在のパネルの入力値をDOMから取得する関数
+    const getPanelInputs = (id) => {
+        let inputs = {};
+        const nameEl = document.getElementById(`c-name-${id}`);
+        if (nameEl && !nameEl.disabled) inputs.name = nameEl.value;
+        
+        const tableNumEl = document.getElementById(`c-table-num-${id}`);
+        const tableTypeEl = document.getElementById(`c-table-type-${id}`);
+        if (tableNumEl && !tableNumEl.disabled && tableTypeEl) {
+            inputs.table = tableNumEl.value + tableTypeEl.value;
+        }
+        
+        const contentEl = document.getElementById(`c-content-${id}`);
+        if (contentEl && !contentEl.disabled) inputs.content = contentEl.value;
+        
+        const memoEl = document.getElementById(`c-memo-${id}`);
+        if (memoEl && !memoEl.disabled) inputs.memo = memoEl.value;
+        
+        const scheduleEl = document.getElementById(`c-schedule-${id}`);
+        if (scheduleEl && !scheduleEl.disabled) inputs.scheduledEndTime = scheduleEl.value;
+        
+        return inputs;
+    };
+
+    // タグ操作（パネル）
+    window.addTag = async (id, tagName) => {
+        const data = currentCounters[id];
+        if(!data) return;
+        const tags = data.tags || [];
+        if(!tags.find(t => t.name === tagName)) {
+            tags.push({ name: tagName, status: 'none' });
+            // 操作時に入力中のテキストも一緒にFirestoreに保存する
+            const inputs = getPanelInputs(id);
+            await setDoc(doc(db, "counters", String(id)), { tags, ...inputs }, { merge: true });
+        }
+    };
+    
+    window.updateTagStatus = async (id, index, status) => {
+        const data = currentCounters[id];
+        if(!data) return;
+        const tags = data.tags || [];
+        if(tags[index]) { 
+            tags[index].status = status; 
+            const inputs = getPanelInputs(id);
+            await setDoc(doc(db, "counters", String(id)), { tags, ...inputs }, { merge: true }); 
+        }
+    };
+    
+    window.removeTag = async (id, index) => {
+        const data = currentCounters[id];
+        if(!data) return;
+        const tags = data.tags || [];
+        tags.splice(index, 1);
+        const inputs = getPanelInputs(id);
+        await setDoc(doc(db, "counters", String(id)), { tags, ...inputs }, { merge: true });
+    };
 
     window.openMoveModal = function(vId) {
         const v = visitorsData[vId];
@@ -442,16 +811,19 @@
     }
 
     window.startService = async (id) => {
-        const name = document.getElementById(`c-name-${id}`).value; const content = document.getElementById(`c-content-${id}`).value;
+        const name = document.getElementById(`c-name-${id}`).value; 
+        const content = document.getElementById(`c-content-${id}`).value;
         const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
-        const schedule = document.getElementById(`c-schedule-${id}`).value; const dbarai = document.getElementById(`c-dbarai-${id}`).checked; const dcard = document.getElementById(`c-dcard-${id}`).checked; const memo = document.getElementById(`c-memo-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value; 
+        const memo = document.getElementById(`c-memo-${id}`).value;
+        
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
-        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString(), dbarai, dcard }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString() }, { merge: true });
     };
 
     window.resetTable = async (id) => {
         if(!confirm("この枠の入力内容をすべてクリアしますか？")) return;
-        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", status: "", startTime: "", dbarai: false, dcard: false }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", status: "", startTime: "", tags: [] }, { merge: true });
     };
 
     window.toggleExtend = async (id) => {
@@ -459,9 +831,6 @@
         const currentStatus = card.classList.contains('status-extended') ? "active" : "extended";
         await setDoc(doc(db, "counters", String(id)), { status: currentStatus }, { merge: true });
     };
-    window.updateDbarai = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await setDoc(doc(db, "counters", String(id)), { dbarai: checked }, { merge: true }); };
-    window.updateDcard = async (id, checked) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await setDoc(doc(db, "counters", String(id)), { dcard: checked }, { merge: true }); };
-    window.updateMemo = async (id, text) => { if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) await setDoc(doc(db, "counters", String(id)), { memo: text }, { merge: true }); };
     
     window.updateSchedule = async (id, inputEl) => {
         const val = inputEl.value; if (!val) return; 
@@ -471,39 +840,72 @@
     };
 
     window.endService = async (id) => {
+        const tags = currentCounters[id]?.tags || [];
+        const unselectedTags = tags.filter(t => t.status === 'none');
+        if (unselectedTags.length > 0) {
+            alert("成約または失注が選択されていない提案商材があります。\n結果を選択してから終了してください。");
+            return;
+        }
+
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
-        const name = document.getElementById(`c-name-${id}`).value; const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
-        const schedule = document.getElementById(`c-schedule-${id}`).value; const content = document.getElementById(`c-content-${id}`).value;
-        const dbarai = document.getElementById(`c-dbarai-${id}`).checked; const dcard = document.getElementById(`c-dcard-${id}`).checked;
-        const memo = document.getElementById(`c-memo-${id}`).value; const duration = document.getElementById(`timer-${id}`).innerText;
-        const isExtended = card.classList.contains('status-extended') ? "あり" : ""; const startTimeISO = card.dataset.startTime;
-        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, dbarai, dcard });
-        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false }, { merge: true });
+        const name = document.getElementById(`c-name-${id}`).value; 
+        const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
+        const schedule = document.getElementById(`c-schedule-${id}`).value; 
+        const content = document.getElementById(`c-content-${id}`).value;
+        const memo = document.getElementById(`c-memo-${id}`).value; 
+        const duration = document.getElementById(`timer-${id}`).innerText;
+        const isExtended = card.classList.contains('status-extended') ? "あり" : ""; 
+        const startTimeISO = card.dataset.startTime;
+        
+        const wins = tags.filter(t => t.status === 'win').map(t => t.name).join(' / ');
+        const losses = tags.filter(t => t.status === 'loss').map(t => t.name).join(' / ');
+
+        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, wins, losses });
+        
+        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", tags: [] }, { merge: true });
     };
+
     window.addVisitorToDb = async () => {
-        const name = document.getElementById('v-name').value; const table = document.getElementById('v-table-num').value + document.getElementById('v-table-type').value;
-        const content = document.getElementById('v-content').value; const memo = document.getElementById('v-memo').value;
-        const isReserved = document.getElementById('v-is-reserved').checked; const reserveTime = document.getElementById('v-reserve-time').value;
+        const name = document.getElementById('v-name').value; 
+        const table = document.getElementById('v-table-num').value + document.getElementById('v-table-type').value;
+        const content = document.getElementById('v-content').value; 
+        const memo = document.getElementById('v-memo').value;
+        const isReserved = document.getElementById('v-is-reserved').checked; 
+        const reserveTime = document.getElementById('v-reserve-time').value;
+        
         if(!name) return;
         await addDoc(collection(db, "visitors"), { createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), name, table, content, memo, isReserved, reserveTime });
-        document.getElementById('v-name').value = ''; document.getElementById('v-table-num').value = ''; document.getElementById('v-table-type').value = 'T'; document.getElementById('v-memo').value = '';
-        document.getElementById('v-is-reserved').checked = false; document.getElementById('v-reserve-time').value = ''; document.getElementById('v-reserve-time').style.display = 'none';
+        
+        document.getElementById('v-name').value = ''; 
+        document.getElementById('v-table-num').value = ''; 
+        document.getElementById('v-table-type').value = 'T'; 
+        document.getElementById('v-memo').value = '';
+        document.getElementById('v-is-reserved').checked = false; 
+        document.getElementById('v-reserve-time').value = ''; 
+        document.getElementById('v-reserve-time').style.display = 'none';
     };
+    
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,d払い初回,dカード即時,所要時間,延長\n";
+        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,提案成約,提案失注,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}",${l.dbarai?"〇":""},${l.dcard?"〇":""},${l.duration},${l.isExtended}\n`;
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}","${l.wins || ""}","${l.losses || ""}",${l.duration},${l.isExtended}\n`;
         });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a");
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
+        const link = document.createElement("a");
         link.href = URL.createObjectURL(blob); link.download = `log_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`;
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
-    window.clearAllLogs = async () => { if(!confirm("ログを全削除します。よろしいですか？")) return;
-        const q = query(collection(db, "logs")); const snapshot = await getDocs(q);
-        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref)); await Promise.all(promises); alert("削除しました");
+    
+    window.clearAllLogs = async () => { 
+        if(!confirm("ログを全削除します。よろしいですか？")) return;
+        const q = query(collection(db, "logs")); 
+        const snapshot = await getDocs(q);
+        const promises = snapshot.docs.map(doc => deleteDoc(doc.ref)); 
+        await Promise.all(promises); 
+        alert("削除しました");
     }
 
     setInterval(() => {
@@ -527,11 +929,20 @@
         const s = String(totalSec % 60).padStart(2, '0');
         return `${h}:${m}:${s}`;
     }
+    
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します(初回のみ)")) return;
-        for(let i=1; i<=TOTAL_COUNTERS; i++){ await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", dbarai: false, dcard: false }); }
+        for(let i=1; i<=TOTAL_COUNTERS; i++){ 
+            await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", tags: [] }); 
+        }
+        await setDoc(doc(db, "settings", "products"), { items: [
+            "光１G", "光１０G", "Ｈ５Ｇ", "ＧＯＬＤ", "ＧＯＬＤ U", 
+            "プラチナ", "でんき", "ガス", "ｄＶＰ", "Amazon", 
+            "MAX", "ポイ活MAX", "Ｓ４", "Pixel"
+        ]});
         alert("完了。リロードしてください。"); location.reload();
     }
+    
     import { getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     getDoc(doc(db, "counters", "1")).then(docSnap => { if(!docSnap.exists()) { document.getElementById('setup-btn').style.display = 'inline-block'; } });
 </script>
