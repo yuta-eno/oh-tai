@@ -158,7 +158,8 @@
         .status-active select.c-content:disabled { font-size: 1rem !important; margin-top: 2px; }
         .status-active input.c-schedule:disabled { font-size: 1rem !important; color: #b45309 !important; }
         .status-active textarea.c-memo:disabled { font-size: 0.85rem !important; color: var(--text-muted) !important; height: auto; margin-top: 2px; }
-        .status-active .btn-reset-table, .status-active .btn-schedule-ok { display: none !important; }
+        /* 修正：決定ボタンを隠さないように変更 */
+        .status-active .btn-reset-table { display: none !important; }
 
         /* パネル内部品 */
         input.c-name { font-weight: bold; font-size: 0.95rem; }
@@ -268,7 +269,7 @@
         <div class="waiting-section">
             <h2>未対応／来店者リスト</h2>
             <div class="visitor-form">
-                <div class="input-group" style="margin-bottom: 6px;"><label>お名前</label><input type="text" id="v-name" placeholder="例: 山田様（名字のみ）"></div>
+                <div class="input-group" style="margin-bottom: 6px;"><label>お名前</label><input type="text" id="v-name" placeholder="例: 山田太郎"></div>
                 <div style="display:flex; gap:6px; margin-bottom: 6px;">
                     <div class="input-group" style="flex:1;">
                         <label>卓No</label>
@@ -309,7 +310,7 @@
             <table class="log-table">
                 <thead>
                     <tr>
-                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="30">No.</th><th width="50">予定</th><th width="90">用件</th><th>備考</th><th width="110">ご成約</th><th width="110">失注</th><th width="50">時間</th><th width="30">延長</th>
+                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="30">No.</th><th width="50">予定</th><th width="90">用件</th><th>備考</th><th width="110">提案成約 (Win)</th><th width="110">提案失注 (Loss)</th><th width="50">時間</th><th width="30">延長</th>
                     </tr>
                 </thead>
                 <tbody id="log-table-body"></tbody>
