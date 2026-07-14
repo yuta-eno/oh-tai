@@ -323,7 +323,7 @@
             <table class="log-table">
                 <thead>
                     <tr>
-                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="50">No.</th><th width="90">予定</th><th width="90">用件</th><th>備考</th><th width="110">提案成約 (Win)</th><th width="110">提案失注 (Loss)</th><th width="50">時間</th><th width="30">延長</th>
+                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="50">No.</th><th width="70">予定</th><th width="90">延長後予定</th><th width="90">用件</th><th>備考</th><th width="110">ご成約</th><th width="110">失注</th><th width="50">時間</th><th width="30">延長</th>
                     </tr>
                 </thead>
                 <tbody id="log-table-body"></tbody>
@@ -580,7 +580,7 @@
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
             tr.innerHTML = `
                 <td>${startTimeStr}</td><td>${l.endTime}</td><td><strong>${l.name}</strong></td>
-                <td style="font-weight:bold;">${l.table}</td><td style="white-space:nowrap;">${l.scheduledEndTime || '-'}</td><td>${l.content}</td>
+                <td style="font-weight:bold;">${l.table}</td><td style="white-space:nowrap;">${l.scheduledEndTime || '-'}</td><td style="white-space:nowrap; color:#b45309; font-weight:bold;">${l.reScheduledEndTime || '-'}</td><td>${l.content}</td>
                 <td style="color:var(--text-muted); font-size:0.75rem;">${l.memo}</td>
                 <td style="color:var(--win-color); font-weight:bold;">${l.wins || '-'}</td>
                 <td style="color:var(--loss-color);">${l.losses || '-'}</td>
@@ -949,11 +949,12 @@
         const wins = tags.filter(t => t.status === 'win').map(t => t.name).join(' / ');
         const losses = tags.filter(t => t.status === 'loss').map(t => t.name).join(' / ');
         
-        // ★予定時刻の履歴をすべてログに残す（例: "14:00 → 15:00"）
+        // ★予定時刻の履歴：1件目＝延長前の当初予定、2件目以降＝延長後に再設定した予定
         const history = currentCounters[id]?.scheduleHistory || [];
-        const scheduleLog = history.length > 0 ? history.join(' → ') : schedule;
+        const initialSchedule = history.length > 0 ? history[0] : schedule;
+        const reSchedules = history.slice(1).join(' → ');
 
-        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: scheduleLog, wins, losses });
+        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: initialSchedule, reScheduledEndTime: reSchedules, wins, losses });
         
         await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], startTime: "", tags: [] }, { merge: true });
     };
@@ -980,10 +981,10 @@
     
     window.exportLogsToCSV = () => {
         if (localLogs.length === 0) { alert("データがありません"); return; }
-        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,提案成約,提案失注,所要時間,延長\n";
+        let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,延長後予定,用件,備考,ご成約,失注,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}","${l.scheduledEndTime || ""}",${l.content},"${l.memo.replace(/"/g,'""')}","${l.wins || ""}","${l.losses || ""}",${l.duration},${l.isExtended}\n`;
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}","${l.scheduledEndTime || ""}","${l.reScheduledEndTime || ""}",${l.content},"${l.memo.replace(/"/g,'""')}","${l.wins || ""}","${l.losses || ""}",${l.duration},${l.isExtended}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
         const link = document.createElement("a");
