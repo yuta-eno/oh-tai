@@ -121,7 +121,7 @@
         .visitor-card:active { cursor: grabbing; transform: scale(0.98); }
         .visitor-card.is-reserved { border-left-color: #f59e0b; }
         .v-card-top { display: flex; align-items: stretch; width: 100%; }
-        .v-table-big-box { background: #f3f4f6; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; width: 45px; flex: none; font-size: 1.1rem; font-weight: 900; color: var(--text-main); }
+        .v-table-big-box { background: #f3f4f6; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; width: 45px; flex: none; font-size: 1rem; font-weight: 900; color: var(--text-main); text-align: center; line-height: 1.1; }
         .is-reserved .v-table-big-box { background: #fef3c7; }
         .v-info-box { flex: 1; min-width: 0; padding: 6px 8px; position: relative; }
         textarea.visitor-card-memo { width: 100%; box-sizing: border-box; resize: vertical; height: 3.2em; margin-top: 6px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; background: #f9fafb; cursor: text;}
@@ -154,7 +154,8 @@
             font-weight: 900 !important; padding: 0 !important; -webkit-appearance: none; appearance: none; opacity: 1; 
         }
         .status-active input.c-name:disabled { font-size: 1.1rem !important; color: #1e3a8a !important; }
-        .status-active .c-table-input:disabled, .status-active .c-table-select:disabled { font-size: 1.2rem !important; color: var(--primary-color) !important; }
+        .status-active .c-table-type-select:disabled { font-size: 0.85rem !important; color: var(--primary-color) !important; }
+        .status-active .c-table-num-select:disabled { font-size: 1.3rem !important; color: var(--primary-color) !important; }
         .status-active select.c-content:disabled { font-size: 1rem !important; margin-top: 2px; }
         .status-active input.c-schedule:disabled { font-size: 1rem !important; color: #b45309 !important; }
         .status-active textarea.c-memo:disabled { font-size: 0.85rem !important; color: var(--text-muted) !important; height: auto; margin-top: 2px; }
@@ -164,11 +165,21 @@
         /* パネル内部品 */
         input.c-name { font-weight: bold; font-size: 0.95rem; }
         .card-top-layout { display: flex; gap: 8px; }
-        .table-side { flex: 0 0 80px; }
-        .c-table-input { font-size: 1rem !important; font-weight: 900; color: var(--primary-color); border: 2px solid #fca5a5; background: #fff5f5; text-align: center; border-radius: 4px 0 0 4px; padding: 4px 2px !important; }
-        .c-table-input:focus { border-color: var(--primary-color); }
-        .c-table-select { font-size: 0.9rem !important; font-weight: 900; color: var(--primary-color); border: 2px solid #fca5a5; background: #fff5f5; text-align: center; border-left: none; border-radius: 0 4px 4px 0; padding: 4px 0 !important; }
-        .c-table-select:focus { border-color: var(--primary-color); }
+        .table-side { flex: 0 0 90px; }
+        
+        /* ★卓No：種別＋番号の縦積みセレクト */
+        .c-table-type-select { 
+            font-size: 0.78rem !important; font-weight: 900; color: var(--primary-color); 
+            border: 2px solid #fca5a5; background: #fff5f5; text-align: center; 
+            border-radius: 4px 4px 0 0; border-bottom: 1px solid #fca5a5; padding: 3px 0 !important; 
+        }
+        .c-table-type-select:focus { border-color: var(--primary-color); }
+        .c-table-num-select { 
+            font-size: 1.05rem !important; font-weight: 900; color: var(--primary-color); 
+            border: 2px solid #fca5a5; background: #fff5f5; text-align: center; 
+            border-top: none; border-radius: 0 0 4px 4px; padding: 3px 0 !important; 
+        }
+        .c-table-num-select:focus { border-color: var(--primary-color); }
         
         .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         textarea.c-memo { resize: none; height: 2em; line-height: 1.2; font-size: 0.8rem; }
@@ -273,11 +284,13 @@
                 <div style="display:flex; gap:6px; margin-bottom: 6px;">
                     <div class="input-group" style="flex:1;">
                         <label>卓No</label>
-                        <div style="display:flex; gap:0;">
-                            <input type="text" id="v-table-num" class="c-table-input" style="padding:4px; font-size:1rem;" placeholder="No">
-                            <select id="v-table-type" class="c-table-select" style="padding:0; font-size:0.9rem;">
-                                <option value="T">T</option><option value="C">C</option>
+                        <div style="display:flex; flex-direction:column;">
+                            <select id="v-table-type" class="c-table-type-select">
+                                <option value="T">商談</option>
+                                <option value="C">初期設定</option>
+                                <option value="窓">窓口</option>
                             </select>
+                            <select id="v-table-num" class="c-table-num-select"></select>
                         </div>
                     </div>
                     <div class="input-group" style="flex:1.5;"><label>用件</label>
@@ -310,7 +323,7 @@
             <table class="log-table">
                 <thead>
                     <tr>
-                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="30">No.</th><th width="50">予定</th><th width="90">用件</th><th>備考</th><th width="110">提案成約 (Win)</th><th width="110">提案失注 (Loss)</th><th width="50">時間</th><th width="30">延長</th>
+                        <th width="50">開始</th><th width="50">終了</th><th width="90">担当者</th><th width="50">No.</th><th width="90">予定</th><th width="90">用件</th><th>備考</th><th width="110">提案成約 (Win)</th><th width="110">提案失注 (Loss)</th><th width="50">時間</th><th width="30">延長</th>
                     </tr>
                 </thead>
                 <tbody id="log-table-body"></tbody>
@@ -361,6 +374,42 @@
     const db = getFirestore(app);
     const TOTAL_COUNTERS = 15;
     
+    // ★卓Noの種別と番号の定義
+    // T=商談 / C=初期設定 / 窓=窓口
+    const TABLE_TYPES = [
+        { value: 'T', label: '商談' },
+        { value: 'C', label: '初期設定' },
+        { value: '窓', label: '窓口' }
+    ];
+    const TABLE_OPTIONS = {
+        'T': ['A', 'B', '1', '2', '3', '4', '5', '6', '7'],
+        'C': ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
+        '窓': ['4', '5', '6', '7', '8', '9', '10']
+    };
+
+    // 卓No文字列（例: "TA", "CC", "窓4"）を種別と番号に分解（旧形式 "3T" にも対応）
+    function parseTable(t) {
+        if (!t) return { type: 'T', num: '' };
+        if (t.startsWith('窓')) return { type: '窓', num: t.slice(1) };
+        if (t.startsWith('T')) return { type: 'T', num: t.slice(1) };
+        if (t.startsWith('C')) return { type: 'C', num: t.slice(1) };
+        // 旧形式（番号＋末尾T/C）の互換
+        if (t.endsWith('T')) return { type: 'T', num: t.slice(0, -1) };
+        if (t.endsWith('C')) return { type: 'C', num: t.slice(0, -1) };
+        return { type: 'T', num: t };
+    }
+
+    function buildTypeOptions(selectedType) {
+        return TABLE_TYPES.map(t => `<option value="${t.value}" ${t.value === selectedType ? 'selected' : ''}>${t.label}</option>`).join('');
+    }
+
+    function buildNumOptions(type, selectedNum) {
+        const opts = (TABLE_OPTIONS[type] || []).slice();
+        // 旧データなどリストにない番号は先頭に追加して表示できるようにする
+        if (selectedNum && !opts.includes(selectedNum)) opts.unshift(selectedNum);
+        return `<option value="">--</option>` + opts.map(n => `<option value="${n}" ${n === selectedNum ? 'selected' : ''}>${n}</option>`).join('');
+    }
+
     // ★動的な提案商材リスト（初期値は空、Firestoreから取得）
     let currentProducts = [];
 
@@ -400,6 +449,12 @@
 
     window.onload = function() {
         createCards();
+        // 来店フォームの卓No番号セレクトを初期化
+        const vType = document.getElementById('v-table-type');
+        const vNum = document.getElementById('v-table-num');
+        vNum.innerHTML = buildNumOptions(vType.value, '');
+        vType.addEventListener('change', () => { vNum.innerHTML = buildNumOptions(vType.value, ''); });
+        
         document.getElementById('btn-enable-sound').style.display = 'inline-block';
         requestWakeLock();
     };
@@ -525,7 +580,7 @@
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
             tr.innerHTML = `
                 <td>${startTimeStr}</td><td>${l.endTime}</td><td><strong>${l.name}</strong></td>
-                <td style="font-weight:bold;">${l.table}</td><td>${l.scheduledEndTime || '-'}</td><td>${l.content}</td>
+                <td style="font-weight:bold;">${l.table}</td><td style="white-space:nowrap;">${l.scheduledEndTime || '-'}</td><td>${l.content}</td>
                 <td style="color:var(--text-muted); font-size:0.75rem;">${l.memo}</td>
                 <td style="color:var(--win-color); font-weight:bold;">${l.wins || '-'}</td>
                 <td style="color:var(--loss-color);">${l.losses || '-'}</td>
@@ -543,36 +598,37 @@
         const detailsEl = document.querySelector(`#counter-card-${id} details.c-tags-accordion`);
         const isDetailsOpen = detailsEl && detailsEl.hasAttribute('open');
         
-        let t_val = data.table || ""; let t_num = "", t_type = "T";
-        if(t_val) {
-            if(t_val.endsWith('T')) { t_num = t_val.slice(0, -1); t_type = 'T'; }
-            else if(t_val.endsWith('C')) { t_num = t_val.slice(0, -1); t_type = 'C'; }
-            else { t_num = t_val; t_type = 'T'; }
-        }
+        // ★卓Noを種別＋番号に分解
+        const parsedTable = parseTable(data.table || "");
+        
+        // ★描画前に選択中だった卓Noの種別を保持（種別を切り替えた直後に再描画された場合の対策）
+        const prevTypeEl = document.getElementById(`c-table-type-${id}`);
+        const isFocusTableType = document.activeElement && document.activeElement.id === `c-table-type-${id}`;
+        const isFocusTableNum = document.activeElement && document.activeElement.id === `c-table-num-${id}`;
 
         const tags = data.tags || [];
         // 追加されていない商材をプールに表示
         const availableProducts = currentProducts.filter(p => !tags.find(t => t.name === p));
         
         const isFocusName = document.activeElement && document.activeElement.id === `c-name-${id}`;
-        const isFocusTableNum = document.activeElement && document.activeElement.id === `c-table-num-${id}`;
         const isFocusMemo = document.activeElement && document.activeElement.id === `c-memo-${id}`;
         
         const currentName = isFocusName ? document.activeElement.value : (data.name || "");
-        const currentTableNum = isFocusTableNum ? document.activeElement.value : t_num;
         const currentMemo = isFocusMemo ? document.activeElement.value : (data.memo || "");
+        const currentType = (isFocusTableType || isFocusTableNum) && prevTypeEl ? prevTypeEl.value : parsedTable.type;
+        const prevNumEl = document.getElementById(`c-table-num-${id}`);
+        const currentNum = (isFocusTableType || isFocusTableNum) && prevNumEl ? prevNumEl.value : parsedTable.num;
 
         card.innerHTML = `
             <div class="card-top-layout">
                 <div class="table-side input-group">
                     <label>卓No</label>
-                    <div style="display:flex; gap:0; height:100%;">
-                        <input type="text" id="c-table-num-${id}" class="c-table-input" value="${currentTableNum}" placeholder="No">
-                        <select id="c-table-type-${id}" class="c-table-select">
-                            <option value="T" ${t_type==='T'?'selected':''}>T</option>
-                            <option value="C" ${t_type==='C'?'selected':''}>C</option>
-                        </select>
-                    </div>
+                    <select id="c-table-type-${id}" class="c-table-type-select">
+                        ${buildTypeOptions(currentType)}
+                    </select>
+                    <select id="c-table-num-${id}" class="c-table-num-select">
+                        ${buildNumOptions(currentType, currentNum)}
+                    </select>
                 </div>
                 <div class="name-time-side">
                     <div class="input-group">
@@ -636,8 +692,8 @@
 
         const els = {
             name: document.getElementById(`c-name-${id}`),
-            tableNum: document.getElementById(`c-table-num-${id}`),
             tableType: document.getElementById(`c-table-type-${id}`),
+            tableNum: document.getElementById(`c-table-num-${id}`),
             schedule: document.getElementById(`c-schedule-${id}`),
             scheduleBtn: document.getElementById(`btn-schedule-ok-${id}`),
             content: document.getElementById(`c-content-${id}`),
@@ -650,11 +706,19 @@
         };
 
         if(isFocusName) els.name.focus();
-        if(isFocusTableNum) els.tableNum.focus();
         if(isFocusMemo) els.memo.focus();
 
-        els.schedule.disabled = !!data.scheduledEndTime;
-        if (data.scheduledEndTime) { els.scheduleBtn.style.display = "none"; } else { els.scheduleBtn.style.display = "block"; }
+        // ★種別を変えたら番号の選択肢を切り替える
+        els.tableType.addEventListener('change', () => {
+            els.tableNum.innerHTML = buildNumOptions(els.tableType.value, '');
+        });
+
+        // ★終了予定のロック制御：
+        //   通常＝確定済みならロック / 延長中＝再入力を許可
+        const isExtendedStatus = data.status === 'extended';
+        const scheduleLocked = !!data.scheduledEndTime && !isExtendedStatus;
+        els.schedule.disabled = scheduleLocked;
+        els.scheduleBtn.style.display = scheduleLocked ? "none" : "block";
         
         card.classList.remove('status-active', 'status-extended', 'time-over-yellow', 'time-over-red');
         if (data.status === 'active' || data.status === 'extended') {
@@ -717,6 +781,9 @@
         }
     };
 
+    // ★卓No（種別＋番号）を1つの文字列に合成（番号未選択なら空）
+    const composeTable = (typeVal, numVal) => numVal ? (typeVal + numVal) : "";
+
     // ★現在のパネルの入力値をDOMから取得する関数
     const getPanelInputs = (id) => {
         let inputs = {};
@@ -726,7 +793,7 @@
         const tableNumEl = document.getElementById(`c-table-num-${id}`);
         const tableTypeEl = document.getElementById(`c-table-type-${id}`);
         if (tableNumEl && !tableNumEl.disabled && tableTypeEl) {
-            inputs.table = tableNumEl.value + tableTypeEl.value;
+            inputs.table = composeTable(tableTypeEl.value, tableNumEl.value);
         }
         
         const contentEl = document.getElementById(`c-content-${id}`);
@@ -735,8 +802,12 @@
         const memoEl = document.getElementById(`c-memo-${id}`);
         if (memoEl && !memoEl.disabled) inputs.memo = memoEl.value;
         
+        // 予定時刻は「決定」ボタン経由でのみ保存（延長中の未確定入力が勝手に保存されるのを防ぐ）
         const scheduleEl = document.getElementById(`c-schedule-${id}`);
-        if (scheduleEl && !scheduleEl.disabled) inputs.scheduledEndTime = scheduleEl.value;
+        const st = currentCounters[id]?.status;
+        if (scheduleEl && !scheduleEl.disabled && st !== 'active' && st !== 'extended') {
+            inputs.scheduledEndTime = scheduleEl.value;
+        }
         
         return inputs;
     };
@@ -814,17 +885,19 @@
     window.startService = async (id) => {
         const name = document.getElementById(`c-name-${id}`).value; 
         const content = document.getElementById(`c-content-${id}`).value;
-        const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
+        const table = composeTable(document.getElementById(`c-table-type-${id}`).value, document.getElementById(`c-table-num-${id}`).value);
         const schedule = document.getElementById(`c-schedule-${id}`).value; 
         const memo = document.getElementById(`c-memo-${id}`).value;
         
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
-        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, startTime: new Date().toISOString() }, { merge: true });
+        // ★予定時刻の履歴：開始時に入力があれば1件目として記録
+        const scheduleHistory = schedule ? [schedule] : [];
+        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, scheduleHistory, startTime: new Date().toISOString() }, { merge: true });
     };
 
     window.resetTable = async (id) => {
         if(!confirm("この枠の入力内容をすべてクリアしますか？")) return;
-        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", status: "", startTime: "", tags: [] }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], status: "", startTime: "", tags: [] }, { merge: true });
     };
 
     window.toggleExtend = async (id) => {
@@ -835,8 +908,22 @@
     
     window.updateSchedule = async (id, inputEl) => {
         const val = inputEl.value; if (!val) return; 
-        if (document.getElementById(`counter-card-${id}`).classList.contains('status-active')) {
-            if(confirm(`終了予定を【${val}】で確定しますか？\n※確定後は変更できません`)) { await setDoc(doc(db, "counters", String(id)), { scheduledEndTime: val }, { merge: true }); } else { inputEl.value = ""; }
+        const card = document.getElementById(`counter-card-${id}`);
+        const data = currentCounters[id] || {};
+        const history = (data.scheduleHistory || []).slice();
+        
+        if (card.classList.contains('status-active')) {
+            const isExtended = card.classList.contains('status-extended');
+            const msg = isExtended 
+                ? `延長後の終了予定を【${val}】に変更しますか？\n※変更前の予定もログに残ります` 
+                : `終了予定を【${val}】で確定しますか？\n※延長ボタンを押すと再設定できます`;
+            if(confirm(msg)) { 
+                // ★履歴に追加（直前と同じ値なら重複させない）
+                if (history[history.length - 1] !== val) history.push(val);
+                await setDoc(doc(db, "counters", String(id)), { scheduledEndTime: val, scheduleHistory: history }, { merge: true }); 
+            } else { 
+                inputEl.value = data.scheduledEndTime || ""; 
+            }
         } else { alert("開始ボタンを押すと保存されます"); }
     };
 
@@ -851,7 +938,7 @@
         if(!confirm("終了しますか？")) return;
         const card = document.getElementById(`counter-card-${id}`);
         const name = document.getElementById(`c-name-${id}`).value; 
-        const table = document.getElementById(`c-table-num-${id}`).value + document.getElementById(`c-table-type-${id}`).value;
+        const table = composeTable(document.getElementById(`c-table-type-${id}`).value, document.getElementById(`c-table-num-${id}`).value);
         const schedule = document.getElementById(`c-schedule-${id}`).value; 
         const content = document.getElementById(`c-content-${id}`).value;
         const memo = document.getElementById(`c-memo-${id}`).value; 
@@ -861,15 +948,19 @@
         
         const wins = tags.filter(t => t.status === 'win').map(t => t.name).join(' / ');
         const losses = tags.filter(t => t.status === 'loss').map(t => t.name).join(' / ');
-
-        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: schedule, wins, losses });
         
-        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", tags: [] }, { merge: true });
+        // ★予定時刻の履歴をすべてログに残す（例: "14:00 → 15:00"）
+        const history = currentCounters[id]?.scheduleHistory || [];
+        const scheduleLog = history.length > 0 ? history.join(' → ') : schedule;
+
+        await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: scheduleLog, wins, losses });
+        
+        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], startTime: "", tags: [] }, { merge: true });
     };
 
     window.addVisitorToDb = async () => {
         const name = document.getElementById('v-name').value; 
-        const table = document.getElementById('v-table-num').value + document.getElementById('v-table-type').value;
+        const table = composeTable(document.getElementById('v-table-type').value, document.getElementById('v-table-num').value);
         const content = document.getElementById('v-content').value; 
         const memo = document.getElementById('v-memo').value;
         const isReserved = document.getElementById('v-is-reserved').checked; 
@@ -879,8 +970,8 @@
         await addDoc(collection(db, "visitors"), { createdAt: serverTimestamp(), timeStr: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), name, table, content, memo, isReserved, reserveTime });
         
         document.getElementById('v-name').value = ''; 
-        document.getElementById('v-table-num').value = ''; 
         document.getElementById('v-table-type').value = 'T'; 
+        document.getElementById('v-table-num').innerHTML = buildNumOptions('T', '');
         document.getElementById('v-memo').value = '';
         document.getElementById('v-is-reserved').checked = false; 
         document.getElementById('v-reserve-time').value = ''; 
@@ -892,7 +983,7 @@
         let csv = "\uFEFF開始時刻,終了時刻,担当者,No,終了予定,用件,備考,提案成約,提案失注,所要時間,延長\n";
         localLogs.forEach(l => {
             const startTimeStr = l.startTime ? new Date(l.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-';
-            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}",${l.scheduledEndTime || ""},${l.content},"${l.memo.replace(/"/g,'""')}","${l.wins || ""}","${l.losses || ""}",${l.duration},${l.isExtended}\n`;
+            csv += `${startTimeStr},${l.endTime},"${l.name}","${l.table}","${l.scheduledEndTime || ""}",${l.content},"${l.memo.replace(/"/g,'""')}","${l.wins || ""}","${l.losses || ""}",${l.duration},${l.isExtended}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); 
         const link = document.createElement("a");
@@ -934,7 +1025,7 @@
     window.initFirestoreData = async () => {
         if(!confirm("データベースを初期化します(初回のみ)")) return;
         for(let i=1; i<=TOTAL_COUNTERS; i++){ 
-            await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", startTime: "", tags: [] }); 
+            await setDoc(doc(db, "counters", String(i)), { id: i, status: "", name: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], startTime: "", tags: [] }); 
         }
         await setDoc(doc(db, "settings", "products"), { items: [
             "光１G", "光１０G", "Ｈ５Ｇ", "ＧＯＬＤ", "ＧＯＬＤ U", 
