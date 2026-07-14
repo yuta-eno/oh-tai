@@ -418,6 +418,8 @@
     let wakeLock = null;
     let currentCounters = {};
     let visitorsData = {};
+    // ★延長中などに入力途中（未確定）の終了予定時刻を再描画から守るためのローカル保持
+    const pendingSchedule = {};
     window.currentMoveVisitorId = null;
 
     const requestWakeLock = async () => {
@@ -619,6 +621,13 @@
         const prevNumEl = document.getElementById(`c-table-num-${id}`);
         const currentNum = (isFocusTableType || isFocusTableNum) && prevNumEl ? prevNumEl.value : parsedTable.num;
 
+        // ★終了予定のロック制御：通常＝確定済みならロック / 延長中＝再入力を許可
+        const isExtendedStatus = data.status === 'extended';
+        const scheduleLocked = !!data.scheduledEndTime && !isExtendedStatus;
+        if (scheduleLocked) delete pendingSchedule[id];
+        // 再描画（Firestore同期）で入力途中の時刻が消えないよう、未確定の値を復元する
+        const scheduleValue = (!scheduleLocked && pendingSchedule[id] !== undefined) ? pendingSchedule[id] : (data.scheduledEndTime || "");
+
         card.innerHTML = `
             <div class="card-top-layout">
                 <div class="table-side input-group">
@@ -641,7 +650,7 @@
                     <div class="input-group">
                         <label>終了予定</label>
                         <div style="display:flex; gap:4px;">
-                            <input type="time" id="c-schedule-${id}" class="c-schedule" step="300" value="${data.scheduledEndTime || ""}">
+                            <input type="time" id="c-schedule-${id}" class="c-schedule" step="300" value="${scheduleValue}">
                             <button id="btn-schedule-ok-${id}" class="btn-schedule-ok">決定</button>
                         </div>
                     </div>
@@ -713,12 +722,11 @@
             els.tableNum.innerHTML = buildNumOptions(els.tableType.value, '');
         });
 
-        // ★終了予定のロック制御：
-        //   通常＝確定済みならロック / 延長中＝再入力を許可
-        const isExtendedStatus = data.status === 'extended';
-        const scheduleLocked = !!data.scheduledEndTime && !isExtendedStatus;
+        // ★終了予定のロック適用＋入力途中の値を再描画から守る
         els.schedule.disabled = scheduleLocked;
         els.scheduleBtn.style.display = scheduleLocked ? "none" : "block";
+        els.schedule.addEventListener('input', () => { pendingSchedule[id] = els.schedule.value; });
+        els.schedule.addEventListener('change', () => { pendingSchedule[id] = els.schedule.value; });
         
         card.classList.remove('status-active', 'status-extended', 'time-over-yellow', 'time-over-red');
         if (data.status === 'active' || data.status === 'extended') {
@@ -892,11 +900,13 @@
         if(!name || !content) { alert("担当者と内容を入力してください"); return; }
         // ★予定時刻の履歴：開始時に入力があれば1件目として記録
         const scheduleHistory = schedule ? [schedule] : [];
+        delete pendingSchedule[id];
         await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, scheduleHistory, startTime: new Date().toISOString() }, { merge: true });
     };
 
     window.resetTable = async (id) => {
         if(!confirm("この枠の入力内容をすべてクリアしますか？")) return;
+        delete pendingSchedule[id];
         await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], status: "", startTime: "", tags: [] }, { merge: true });
     };
 
@@ -907,7 +917,8 @@
     };
     
     window.updateSchedule = async (id, inputEl) => {
-        const val = inputEl.value; if (!val) return; 
+        const val = inputEl.value; 
+        if (!val) { alert("時刻を入力してください"); return; }
         const card = document.getElementById(`counter-card-${id}`);
         const data = currentCounters[id] || {};
         const history = (data.scheduleHistory || []).slice();
@@ -920,8 +931,10 @@
             if(confirm(msg)) { 
                 // ★履歴に追加（直前と同じ値なら重複させない）
                 if (history[history.length - 1] !== val) history.push(val);
+                delete pendingSchedule[id];
                 await setDoc(doc(db, "counters", String(id)), { scheduledEndTime: val, scheduleHistory: history }, { merge: true }); 
             } else { 
+                delete pendingSchedule[id];
                 inputEl.value = data.scheduledEndTime || ""; 
             }
         } else { alert("開始ボタンを押すと保存されます"); }
@@ -956,6 +969,7 @@
 
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: initialSchedule, reScheduledEndTime: reSchedules, wins, losses });
         
+        delete pendingSchedule[id];
         await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], startTime: "", tags: [] }, { merge: true });
     };
 
