@@ -182,6 +182,12 @@
         .c-table-num-select:focus { border-color: var(--primary-color); }
         
         .name-time-side { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        /* ★予定時刻の変更履歴（パネル上表示） */
+        .schedule-history { 
+            font-size: 0.7rem; font-weight: bold; color: #b45309; 
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; 
+            padding: 2px 6px; margin-top: 2px; text-align: center; letter-spacing: 0.5px; 
+        }
         textarea.c-memo { resize: none; height: 2em; line-height: 1.2; font-size: 0.8rem; }
         .timer-display { font-size: 1.1rem; font-weight: 900; text-align: center; font-family: monospace; color: var(--text-main); margin: 2px 0; letter-spacing: 1px; }
         
@@ -653,6 +659,7 @@
                             <input type="time" id="c-schedule-${id}" class="c-schedule" step="300" value="${scheduleValue}">
                             <button id="btn-schedule-ok-${id}" class="btn-schedule-ok">決定</button>
                         </div>
+                        ${(data.scheduleHistory && data.scheduleHistory.length > 1) ? `<div class="schedule-history">当初 ${data.scheduleHistory[0]} → 変更 ${data.scheduleHistory.slice(1).join(' → ')}</div>` : ''}
                     </div>
                 </div>
             </div>
@@ -901,13 +908,13 @@
         // ★予定時刻の履歴：開始時に入力があれば1件目として記録
         const scheduleHistory = schedule ? [schedule] : [];
         delete pendingSchedule[id];
-        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, scheduleHistory, startTime: new Date().toISOString() }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { status: "active", name, table, content, memo, scheduledEndTime: schedule, scheduleHistory, wasExtended: false, startTime: new Date().toISOString() }, { merge: true });
     };
 
     window.resetTable = async (id) => {
         if(!confirm("この枠の入力内容をすべてクリアしますか？")) return;
         delete pendingSchedule[id];
-        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], status: "", startTime: "", tags: [] }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { name: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], wasExtended: false, status: "", startTime: "", tags: [] }, { merge: true });
     };
 
     window.toggleExtend = async (id) => {
@@ -926,13 +933,15 @@
         if (card.classList.contains('status-active')) {
             const isExtended = card.classList.contains('status-extended');
             const msg = isExtended 
-                ? `延長後の終了予定を【${val}】に変更しますか？\n※変更前の予定もログに残ります` 
+                ? `延長後の終了予定を【${val}】に変更しますか？\n※確定するとパネルは応対中に戻ります` 
                 : `終了予定を【${val}】で確定しますか？\n※延長ボタンを押すと再設定できます`;
             if(confirm(msg)) { 
                 // ★履歴に追加（直前と同じ値なら重複させない）
                 if (history[history.length - 1] !== val) history.push(val);
                 delete pendingSchedule[id];
-                await setDoc(doc(db, "counters", String(id)), { scheduledEndTime: val, scheduleHistory: history }, { merge: true }); 
+                // ★延長中に確定した場合：ステータスを応対中に戻し、延長済みフラグを立てる（ログの「延長」欄用）
+                const extra = isExtended ? { status: "active", wasExtended: true } : {};
+                await setDoc(doc(db, "counters", String(id)), { scheduledEndTime: val, scheduleHistory: history, ...extra }, { merge: true }); 
             } else { 
                 delete pendingSchedule[id];
                 inputEl.value = data.scheduledEndTime || ""; 
@@ -956,7 +965,8 @@
         const content = document.getElementById(`c-content-${id}`).value;
         const memo = document.getElementById(`c-memo-${id}`).value; 
         const duration = document.getElementById(`timer-${id}`).innerText;
-        const isExtended = card.classList.contains('status-extended') ? "あり" : ""; 
+        // ★延長中に時刻確定して応対中に戻った場合も「延長あり」として記録
+        const isExtended = (card.classList.contains('status-extended') || currentCounters[id]?.wasExtended) ? "あり" : ""; 
         const startTimeISO = card.dataset.startTime;
         
         const wins = tags.filter(t => t.status === 'win').map(t => t.name).join(' / ');
@@ -970,7 +980,7 @@
         await addDoc(collection(db, "logs"), { createdAt: serverTimestamp(), startTime: startTimeISO, endTime: new Date().toLocaleTimeString(), name, table, content, memo, duration, isExtended, scheduledEndTime: initialSchedule, reScheduledEndTime: reSchedules, wins, losses });
         
         delete pendingSchedule[id];
-        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], startTime: "", tags: [] }, { merge: true });
+        await setDoc(doc(db, "counters", String(id)), { status: "", table: "", content: "", memo: "", scheduledEndTime: "", scheduleHistory: [], wasExtended: false, startTime: "", tags: [] }, { merge: true });
     };
 
     window.addVisitorToDb = async () => {
